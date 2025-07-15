@@ -1,0 +1,30 @@
+{
+  "name": "nanatau-novel",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YunosukeYoshino/nanatau-novel.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/YunosukeYoshino/nanatau-novel/issues"
+  },
+  "homepage": "https://github.com/YunosukeYoshino/nanatau-novel#readme",
+  "description": "ななたう - 硝子の心、たう（届く）まで - Visual Novel Game",
+  "dependencies": {
+    "@drincs/pixi-vn": "^1.2.21",
+    "@types/node": "^24.0.14",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.4"
+  }
+}
