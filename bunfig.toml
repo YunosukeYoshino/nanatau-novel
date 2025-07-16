@@ -12,7 +12,7 @@ root = "."
 [run]
 # 実行時設定
 bun = true
-shell = "bash"
+shell = "system"
 
 [dev]
 # 開発時設定
