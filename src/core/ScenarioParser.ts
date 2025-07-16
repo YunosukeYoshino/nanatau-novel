@@ -187,6 +187,30 @@ export class ScenarioParser implements IScenarioParser {
       };
     }
 
+    // 【選択肢】パターン
+    if (line.startsWith("【選択肢】")) {
+      return {
+        type: "choice",
+        value: line.replace("【選択肢】", "").trim(),
+      };
+    }
+
+    // 【表情】パターン（キャラクター感情表現）
+    if (line.startsWith("【表情】")) {
+      return {
+        type: "emotion",
+        value: line.replace("【表情】", "").trim(),
+      };
+    }
+
+    // 【効果】パターン（画面効果）
+    if (line.startsWith("【効果】")) {
+      return {
+        type: "effect",
+        value: line.replace("【効果】", "").trim(),
+      };
+    }
+
     return null;
   }
 
@@ -217,7 +241,7 @@ export class ScenarioParser implements IScenarioParser {
     // キャラクター名のパターン（短い行で、特殊記号がない場合）
     if (
       line &&
-      line.length <= 10 &&
+      line.length <= 15 &&
       !line.includes("【") &&
       !line.includes("】") &&
       !line.startsWith("（") &&
@@ -225,7 +249,9 @@ export class ScenarioParser implements IScenarioParser {
       !line.includes("「") &&
       !line.includes("」") &&
       !line.includes("。") &&
-      !line.includes("、")
+      !line.includes("、") &&
+      !line.includes("？") &&
+      !line.includes("！")
     ) {
       return {
         character: line.trim(),
@@ -256,11 +282,47 @@ export class ScenarioParser implements IScenarioParser {
   }
 
   /**
-   * 選択肢の解析（後で実装）
+   * 選択肢の解析
    */
-  parseChoices(_lines: string[]): ChoiceData[] {
-    // TODO: 選択肢解析は次のタスクで実装
-    return [];
+  parseChoices(lines: string[]): ChoiceData[] {
+    const choices: ChoiceData[] = [];
+    let choiceId = 1;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]?.trim();
+      if (!line) continue;
+
+      // 【選択肢】タグの検出
+      if (line.includes("【選択肢】")) {
+        // 次の行から選択肢テキストを探す
+        for (let j = i + 1; j < lines.length; j++) {
+          const choiceLine = lines[j]?.trim();
+          if (!choiceLine) continue;
+
+          // 選択肢終了の判定
+          if (choiceLine.startsWith("【") || choiceLine === "---") {
+            break;
+          }
+
+          // 選択肢テキストの解析
+          const choiceMatch = choiceLine.match(/^(.+?)(?:→(.+))?$/);
+          if (choiceMatch) {
+            const text = choiceMatch[1]?.trim();
+            const routeHint = choiceMatch[2]?.trim();
+
+            if (text) {
+              choices.push({
+                id: `choice_${choiceId++}`,
+                text,
+                routeId: routeHint || `route_${choices.length + 1}`,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return choices;
   }
 
   /**

@@ -47,8 +47,9 @@ export interface SceneData {
 export interface ChoiceData {
   id: string;
   text: string;
-  nextScene: string;
-  routeChange?: string;
+  routeId: string;
+  condition?: string;
+  nextScene?: string;
 }
 
 // シナリオデータ
@@ -77,7 +78,14 @@ export interface SaveSlotInfo {
 
 // ディレクティブデータ
 export interface DirectiveData {
-  type: "background" | "bgm" | "se" | "character";
+  type:
+    | "background"
+    | "bgm"
+    | "se"
+    | "character"
+    | "choice"
+    | "emotion"
+    | "effect";
   value: string;
   options?: Record<string, any>;
 }
@@ -87,6 +95,7 @@ export interface DialogueData {
   character: string;
   text: string;
   isMonologue: boolean;
+  emotion?: string;
 }
 
 // メニュータイプ
