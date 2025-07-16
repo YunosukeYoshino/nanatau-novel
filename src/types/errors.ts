@@ -17,9 +17,13 @@ export abstract class GameError extends Error {
 
 // シナリオ関連エラー
 export class ScenarioError extends GameError {
-  public readonly filePath?: string;
+  public readonly filePath?: string | undefined;
 
-  constructor(message: string, filePath?: string, isCritical: boolean = false) {
+  constructor(
+    message: string,
+    filePath?: string | undefined,
+    isCritical: boolean = false
+  ) {
     super(message, isCritical);
     this.filePath = filePath;
   }
@@ -45,12 +49,12 @@ export class AssetError extends GameError {
 // セーブ・ロード関連エラー
 export class SaveLoadError extends GameError {
   public readonly operation: "save" | "load";
-  public readonly slotId?: string;
+  public readonly slotId?: string | undefined;
 
   constructor(
     message: string,
     operation: "save" | "load",
-    slotId?: string,
+    slotId?: string | undefined,
     isCritical: boolean = false
   ) {
     super(message, isCritical);
@@ -61,9 +65,13 @@ export class SaveLoadError extends GameError {
 
 // システム関連エラー
 export class SystemError extends GameError {
-  public readonly errorCode?: string;
+  public readonly errorCode?: string | undefined;
 
-  constructor(message: string, errorCode?: string, isCritical: boolean = true) {
+  constructor(
+    message: string,
+    errorCode?: string | undefined,
+    isCritical: boolean = true
+  ) {
     super(message, isCritical);
     this.errorCode = errorCode;
   }

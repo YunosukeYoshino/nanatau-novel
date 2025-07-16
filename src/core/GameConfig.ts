@@ -2,8 +2,8 @@
  * ゲーム設定のデフォルト値と管理クラス
  */
 
-import { GameConfig } from "../types/core.js";
-import { IConfigManager } from "../types/interfaces.js";
+import type { GameConfig } from "../types/core.js";
+import type { IConfigManager } from "../types/interfaces.js";
 
 export class ConfigManager implements IConfigManager {
   private static instance: ConfigManager;

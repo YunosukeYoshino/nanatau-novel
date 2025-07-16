@@ -6,7 +6,20 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest watch",
+    "prepare": "husky",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint ./src",
+    "lint:fix": "biome lint --fix ./src",
+    "format": "biome format --write ./src",
+    "format:check": "biome format ./src",
+    "check": "biome check ./src",
+    "check:fix": "biome check --fix ./src",
+    "validate": "npm run typecheck && npm run lint && npm run format:check && npm run test:run",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean && npm run validate"
   },
   "repository": {
     "type": "git",
@@ -28,6 +41,8 @@
     "vite": "^7.0.4"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.1.1",
+    "husky": "^9.1.7",
     "vitest": "^3.2.4"
   }
 }

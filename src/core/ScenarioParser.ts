@@ -3,14 +3,14 @@
  * テキストファイルを読み込んでScenarioDataに変換する
  */
 
-import {
+import type {
   ScenarioData,
   SceneData,
   ChoiceData,
   DirectiveData,
   DialogueData,
 } from "../types/core.js";
-import { IScenarioParser } from "../types/interfaces.js";
+import type { IScenarioParser } from "../types/interfaces.js";
 
 export class ScenarioParser implements IScenarioParser {
   /**
@@ -63,6 +63,7 @@ export class ScenarioParser implements IScenarioParser {
   private parseScenes(lines: string[]): SceneData[] {
     const scenes: SceneData[] = [];
     let sceneId = 1;
+    let currentCharacter = "";
 
     // コンテンツ開始位置を見つける（最初の --- の後）
     let contentStartIndex = -1;
@@ -108,11 +109,30 @@ export class ScenarioParser implements IScenarioParser {
       // 台詞の解析
       const dialogue = this.parseDialogue(line);
       if (dialogue) {
+        // キャラクター名が設定されている場合は現在のキャラクターを更新
+        if (dialogue.character) {
+          currentCharacter = dialogue.character;
+        }
+
+        // キャラクター情報の処理
+        let characterForScene = dialogue.character;
+        if (dialogue.isMonologue && !dialogue.character) {
+          // モノローグテキストの場合はキャラクター情報をリセット
+          characterForScene = "";
+          currentCharacter = "";
+        } else if (!dialogue.character && !dialogue.isMonologue) {
+          // 通常の台詞（「...」形式）の場合もキャラクター情報をリセット
+          characterForScene = "";
+          currentCharacter = "";
+        } else if (!dialogue.character) {
+          characterForScene = currentCharacter;
+        }
+
         scenes.push({
           id: `scene_${sceneId++}`,
           type: "dialogue",
           content: dialogue.text,
-          character: dialogue.character,
+          character: characterForScene,
         });
         continue;
       }
@@ -123,6 +143,7 @@ export class ScenarioParser implements IScenarioParser {
           id: `scene_${sceneId++}`,
           type: "dialogue",
           content: line,
+          character: currentCharacter,
         });
       }
     }
@@ -175,7 +196,7 @@ export class ScenarioParser implements IScenarioParser {
   parseDialogue(line: string): DialogueData | null {
     // モノローグパターン: キャラクター名（モノローグ）
     const monologueMatch = line.match(/^(.+?)（モノローグ）$/);
-    if (monologueMatch) {
+    if (monologueMatch && monologueMatch[1]) {
       return {
         character: monologueMatch[1].trim(),
         text: "",
@@ -185,7 +206,7 @@ export class ScenarioParser implements IScenarioParser {
 
     // 台詞テキストパターン: 「...」
     const dialogueMatch = line.match(/^「(.+)」$/);
-    if (dialogueMatch) {
+    if (dialogueMatch && dialogueMatch[1]) {
       return {
         character: "",
         text: dialogueMatch[1].trim(),
@@ -196,7 +217,7 @@ export class ScenarioParser implements IScenarioParser {
     // キャラクター名のパターン（短い行で、特殊記号がない場合）
     if (
       line &&
-      line.length <= 20 &&
+      line.length <= 10 &&
       !line.includes("【") &&
       !line.includes("】") &&
       !line.startsWith("（") &&
@@ -216,7 +237,7 @@ export class ScenarioParser implements IScenarioParser {
     // モノローグテキスト（長い行で、特殊記号がない場合）
     if (
       line &&
-      line.length > 20 &&
+      line.length > 5 &&
       !line.includes("【") &&
       !line.includes("】") &&
       !line.startsWith("（") &&
@@ -237,7 +258,7 @@ export class ScenarioParser implements IScenarioParser {
   /**
    * 選択肢の解析（後で実装）
    */
-  parseChoices(lines: string[]): ChoiceData[] {
+  parseChoices(_lines: string[]): ChoiceData[] {
     // TODO: 選択肢解析は次のタスクで実装
     return [];
   }

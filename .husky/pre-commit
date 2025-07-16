@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# TypeScript 型チェック
+echo "🔍 TypeScript 型チェック中..."
+npm run typecheck
+
+# Biome リンター
+echo "🔧 Biome リンター実行中..."
+npm run lint
+
+# Biome フォーマッター
+echo "✨ Biome フォーマッター実行中..."
+npm run format:check
+
+# テスト実行
+echo "🧪 テスト実行中..."
+npm run test
+
+echo "✅ pre-commit チェック完了"

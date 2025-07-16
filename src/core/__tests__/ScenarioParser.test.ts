@@ -84,8 +84,9 @@ describe("ScenarioParser", () => {
     });
 
     it("should parse monologue text", () => {
-      const result =
-        parser.parseDialogue("夏の終わりの、生温い風が頬を撫でる。");
+      const result = parser.parseDialogue(
+        "夏の終わりの、生温い風が頬を撫でる。"
+      );
       expect(result).toEqual({
         character: "",
         text: "夏の終わりの、生温い風が頬を撫でる。",

@@ -2,7 +2,7 @@
  * システムインターフェース定義
  */
 
-import {
+import type {
   ScenarioData,
   SceneData,
   ChoiceData,
