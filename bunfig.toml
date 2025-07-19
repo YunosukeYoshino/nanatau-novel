@@ -1,0 +1,20 @@
+[install]
+# npm互換性の設定
+registry = "https://registry.npmjs.org"
+cache = true
+production = false
+
+[test]
+# テスト設定
+preload = []
+root = "."
+
+[run]
+# 実行時設定
+bun = true
+shell = "system"
+
+[dev]
+# 開発時設定
+hot = true
+watch = true

@@ -3,10 +3,10 @@
  */
 
 import {
-  GameError,
-  ScenarioError,
-  AssetError,
-  SaveLoadError,
+  type GameError,
+  type ScenarioError,
+  type AssetError,
+  type SaveLoadError,
   SystemError,
 } from "../types/errors.js";
 
