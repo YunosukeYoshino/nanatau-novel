@@ -6,6 +6,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { StoryEngine } from "../StoryEngine.js";
 import type { ScenarioData, GameState } from "../../types/core.js";
 
+// テスト用型定義
+interface MockResponse {
+  text: () => Promise<string>;
+}
+
 // テスト用のモックシナリオデータ
 const mockScenarioData: ScenarioData = {
   metadata: {
@@ -114,13 +119,21 @@ describe("StoryEngine", () => {
       const mockResponse = {
         text: vi.fn().mockResolvedValue(JSON.stringify(mockScenarioData)),
       };
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (
+        global.fetch as unknown as {
+          mockResolvedValue: (value: MockResponse) => void;
+        }
+      ).mockResolvedValue(mockResponse);
 
       // ScenarioParserのparseScenarioFileメソッドをモック
       const mockParser = {
         parseScenarioFile: vi.fn().mockReturnValue(mockScenarioData),
       };
-      (storyEngine as any).scenarioParser = mockParser;
+      (
+        storyEngine as unknown as {
+          scenarioParser: { parseScenarioFile: ReturnType<typeof vi.fn> };
+        }
+      ).scenarioParser = mockParser;
 
       const result = await storyEngine.loadScenario("/test/scenario.json");
 
@@ -129,7 +142,9 @@ describe("StoryEngine", () => {
     });
 
     it("シナリオファイルの読み込みに失敗した場合エラーを投げる", async () => {
-      (global.fetch as any).mockRejectedValue(new Error("Network error"));
+      (
+        global.fetch as unknown as { mockRejectedValue: (error: Error) => void }
+      ).mockRejectedValue(new Error("Network error"));
 
       await expect(
         storyEngine.loadScenario("/invalid/path.json")
@@ -143,12 +158,20 @@ describe("StoryEngine", () => {
       const mockResponse = {
         text: vi.fn().mockResolvedValue("mock content"),
       };
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (
+        global.fetch as unknown as {
+          mockResolvedValue: (value: MockResponse) => void;
+        }
+      ).mockResolvedValue(mockResponse);
 
       const mockParser = {
         parseScenarioFile: vi.fn().mockReturnValue(mockScenarioData),
       };
-      (storyEngine as any).scenarioParser = mockParser;
+      (
+        storyEngine as unknown as {
+          scenarioParser: { parseScenarioFile: ReturnType<typeof vi.fn> };
+        }
+      ).scenarioParser = mockParser;
 
       await storyEngine.loadScenario("/test/scenario.json");
     });
@@ -186,12 +209,20 @@ describe("StoryEngine", () => {
       const mockResponse = {
         text: vi.fn().mockResolvedValue("mock content"),
       };
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (
+        global.fetch as unknown as {
+          mockResolvedValue: (value: MockResponse) => void;
+        }
+      ).mockResolvedValue(mockResponse);
 
       const mockParser = {
         parseScenarioFile: vi.fn().mockReturnValue(mockScenarioData),
       };
-      (storyEngine as any).scenarioParser = mockParser;
+      (
+        storyEngine as unknown as {
+          scenarioParser: { parseScenarioFile: ReturnType<typeof vi.fn> };
+        }
+      ).scenarioParser = mockParser;
 
       await storyEngine.loadScenario("/test/scenario.json");
       storyEngine.advanceStory(); // scene_002 (選択肢シーン) に移動
@@ -273,12 +304,20 @@ describe("StoryEngine", () => {
       const mockResponse = {
         text: vi.fn().mockResolvedValue("mock content"),
       };
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (
+        global.fetch as unknown as {
+          mockResolvedValue: (value: MockResponse) => void;
+        }
+      ).mockResolvedValue(mockResponse);
 
       const mockParser = {
         parseScenarioFile: vi.fn().mockReturnValue(mockScenarioData),
       };
-      (storyEngine as any).scenarioParser = mockParser;
+      (
+        storyEngine as unknown as {
+          scenarioParser: { parseScenarioFile: ReturnType<typeof vi.fn> };
+        }
+      ).scenarioParser = mockParser;
 
       await storyEngine.loadScenario("/test/scenario.json");
     });
