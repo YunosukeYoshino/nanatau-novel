@@ -165,12 +165,12 @@ describe("ScenarioParser", () => {
         character: "主人公",
       });
 
-      // 台詞
+      // 台詞（修正後：正しくキャラクターに帰属）
       expect(result.scenes[5]).toEqual({
         id: "scene_6",
         type: "dialogue",
         content: "こんにちは",
-        character: "",
+        character: "主人公",
       });
     });
   });

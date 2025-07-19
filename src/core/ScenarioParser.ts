@@ -13,24 +13,62 @@ import type {
 import type { IScenarioParser } from "../types/interfaces.js";
 
 export class ScenarioParser implements IScenarioParser {
+  // 定数定義
+  private static readonly MAX_CHARACTER_NAME_LENGTH = 15;
+  private static readonly MIN_MONOLOGUE_LENGTH = 5;
+  private static readonly CONTENT_SEPARATOR = "---";
+
+  // 正規表現パターン（パフォーマンス向上のためキャッシュ）
+  private static readonly REGEX_PATTERNS = {
+    monologue: /^(.+?)（モノローグ）$/,
+    dialogue: /^「(.+)」$/,
+    choiceRoute: /^(.+?)(?:→(.+))?$/,
+  };
+
+  // ディレクティブパターン
+  private static readonly DIRECTIVE_PATTERNS = {
+    background: "【背景】",
+    bgm: "【BGM】",
+    se: "【SE】",
+    character: "【立ち絵】",
+    choice: "【選択肢】",
+    emotion: "【表情】",
+    effect: "【効果】",
+  };
   /**
    * テキストファイルの内容をパースしてScenarioDataに変換
    */
   parseScenarioFile(content: string): ScenarioData {
-    const lines = content.split("\n").map((line) => line.trim());
+    // 入力検証
+    if (!content || typeof content !== "string") {
+      throw new Error("Invalid content: content must be a non-empty string");
+    }
 
-    // タイトルと章の情報を抽出
-    const title = this.extractTitle(lines);
-    const chapter = this.extractChapter(lines);
+    try {
+      const lines = content.split("\n").map((line) => line.trim());
 
-    // シーンデータを解析
-    const scenes = this.parseScenes(lines);
+      if (lines.length === 0) {
+        throw new Error("Invalid content: content cannot be empty");
+      }
 
-    return {
-      title,
-      chapter,
-      scenes,
-    };
+      // タイトルと章の情報を抽出
+      const title = this.extractTitle(lines);
+      const chapter = this.extractChapter(lines);
+
+      // シーンデータを解析
+      const scenes = this.parseScenes(lines);
+
+      return {
+        title,
+        chapter,
+        scenes,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to parse scenario file: ${error.message}`);
+      }
+      throw new Error("Failed to parse scenario file: Unknown error");
+    }
   }
 
   /**
@@ -68,7 +106,7 @@ export class ScenarioParser implements IScenarioParser {
     // コンテンツ開始位置を見つける（最初の --- の後）
     let contentStartIndex = -1;
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i] === "---") {
+      if (lines[i] === ScenarioParser.CONTENT_SEPARATOR) {
         contentStartIndex = i + 1;
         break;
       }
@@ -81,7 +119,7 @@ export class ScenarioParser implements IScenarioParser {
     // コンテンツ終了位置を見つける（最後の --- の前）
     let contentEndIndex = lines.length;
     for (let i = lines.length - 1; i >= 0; i--) {
-      if (lines[i] === "---") {
+      if (lines[i] === ScenarioParser.CONTENT_SEPARATOR) {
         contentEndIndex = i;
         break;
       }
@@ -97,12 +135,24 @@ export class ScenarioParser implements IScenarioParser {
       // ディレクティブの解析
       const directive = this.parseDirectives(line);
       if (directive) {
-        scenes.push({
-          id: `scene_${sceneId++}`,
-          type: "directive",
-          content: line,
-          ...this.directiveToSceneProperties(directive),
-        });
+        // 選択肢ディレクティブの場合は選択肢を解析
+        if (directive.type === "choice") {
+          const choices = this.parseChoices(lines.slice(i));
+          scenes.push({
+            id: `scene_${sceneId++}`,
+            type: "choice",
+            content: line,
+            choices: choices,
+            ...this.directiveToSceneProperties(directive),
+          });
+        } else {
+          scenes.push({
+            id: `scene_${sceneId++}`,
+            type: "directive",
+            content: line,
+            ...this.directiveToSceneProperties(directive),
+          });
+        }
         continue;
       }
 
@@ -114,17 +164,14 @@ export class ScenarioParser implements IScenarioParser {
           currentCharacter = dialogue.character;
         }
 
-        // キャラクター情報の処理
+        // キャラクター情報の処理（修正版：重要なバグ修正）
         let characterForScene = dialogue.character;
         if (dialogue.isMonologue && !dialogue.character) {
-          // モノローグテキストの場合はキャラクター情報をリセット
-          characterForScene = "";
-          currentCharacter = "";
-        } else if (!dialogue.character && !dialogue.isMonologue) {
-          // 通常の台詞（「...」形式）の場合もキャラクター情報をリセット
+          // ナレーション（キャラクター名なしのモノローグ）は一般的なナレーションとして扱う
           characterForScene = "";
           currentCharacter = "";
         } else if (!dialogue.character) {
+          // 台詞テキスト（例：「...」）でキャラクター名がない場合は、最後の話者に帰属
           characterForScene = currentCharacter;
         }
 
@@ -155,60 +202,36 @@ export class ScenarioParser implements IScenarioParser {
    * 特殊タグ（ディレクティブ）の解析
    */
   parseDirectives(line: string): DirectiveData | null {
-    // 【背景】パターン
-    if (line.startsWith("【背景】")) {
-      return {
-        type: "background",
-        value: line.replace("【背景】", "").trim(),
-      };
+    // 入力検証
+    if (!line || typeof line !== "string") {
+      return null;
     }
 
-    // 【BGM】パターン
-    if (line.startsWith("【BGM】")) {
-      return {
-        type: "bgm",
-        value: line.replace("【BGM】", "").trim(),
-      };
+    const trimmedLine = line.trim();
+    if (!trimmedLine) {
+      return null;
     }
 
-    // 【SE】パターン
-    if (line.startsWith("【SE】")) {
-      return {
-        type: "se",
-        value: line.replace("【SE】", "").trim(),
-      };
-    }
+    // ディレクティブパターンのマッピング
+    const directiveMap: Array<
+      [string, keyof typeof ScenarioParser.DIRECTIVE_PATTERNS]
+    > = [
+      [ScenarioParser.DIRECTIVE_PATTERNS.background, "background"],
+      [ScenarioParser.DIRECTIVE_PATTERNS.bgm, "bgm"],
+      [ScenarioParser.DIRECTIVE_PATTERNS.se, "se"],
+      [ScenarioParser.DIRECTIVE_PATTERNS.character, "character"],
+      [ScenarioParser.DIRECTIVE_PATTERNS.choice, "choice"],
+      [ScenarioParser.DIRECTIVE_PATTERNS.emotion, "emotion"],
+      [ScenarioParser.DIRECTIVE_PATTERNS.effect, "effect"],
+    ];
 
-    // 【立ち絵】パターン
-    if (line.startsWith("【立ち絵】")) {
-      return {
-        type: "character",
-        value: line.replace("【立ち絵】", "").trim(),
-      };
-    }
-
-    // 【選択肢】パターン
-    if (line.startsWith("【選択肢】")) {
-      return {
-        type: "choice",
-        value: line.replace("【選択肢】", "").trim(),
-      };
-    }
-
-    // 【表情】パターン（キャラクター感情表現）
-    if (line.startsWith("【表情】")) {
-      return {
-        type: "emotion",
-        value: line.replace("【表情】", "").trim(),
-      };
-    }
-
-    // 【効果】パターン（画面効果）
-    if (line.startsWith("【効果】")) {
-      return {
-        type: "effect",
-        value: line.replace("【効果】", "").trim(),
-      };
+    for (const [pattern, type] of directiveMap) {
+      if (trimmedLine.startsWith(pattern)) {
+        return {
+          type: type as DirectiveData["type"],
+          value: trimmedLine.replace(pattern, "").trim(),
+        };
+      }
     }
 
     return null;
@@ -218,9 +241,21 @@ export class ScenarioParser implements IScenarioParser {
    * キャラクター台詞の解析
    */
   parseDialogue(line: string): DialogueData | null {
+    // 入力検証
+    if (!line || typeof line !== "string") {
+      return null;
+    }
+
+    const trimmedLine = line.trim();
+    if (!trimmedLine) {
+      return null;
+    }
+
     // モノローグパターン: キャラクター名（モノローグ）
-    const monologueMatch = line.match(/^(.+?)（モノローグ）$/);
-    if (monologueMatch && monologueMatch[1]) {
+    const monologueMatch = trimmedLine.match(
+      ScenarioParser.REGEX_PATTERNS.monologue
+    );
+    if (monologueMatch?.[1]) {
       return {
         character: monologueMatch[1].trim(),
         text: "",
@@ -229,8 +264,10 @@ export class ScenarioParser implements IScenarioParser {
     }
 
     // 台詞テキストパターン: 「...」
-    const dialogueMatch = line.match(/^「(.+)」$/);
-    if (dialogueMatch && dialogueMatch[1]) {
+    const dialogueMatch = trimmedLine.match(
+      ScenarioParser.REGEX_PATTERNS.dialogue
+    );
+    if (dialogueMatch?.[1]) {
       return {
         character: "",
         text: dialogueMatch[1].trim(),
@@ -240,21 +277,20 @@ export class ScenarioParser implements IScenarioParser {
 
     // キャラクター名のパターン（短い行で、特殊記号がない場合）
     if (
-      line &&
-      line.length <= 15 &&
-      !line.includes("【") &&
-      !line.includes("】") &&
-      !line.startsWith("（") &&
-      !line.endsWith("）") &&
-      !line.includes("「") &&
-      !line.includes("」") &&
-      !line.includes("。") &&
-      !line.includes("、") &&
-      !line.includes("？") &&
-      !line.includes("！")
+      trimmedLine.length <= ScenarioParser.MAX_CHARACTER_NAME_LENGTH &&
+      !trimmedLine.includes("【") &&
+      !trimmedLine.includes("】") &&
+      !trimmedLine.startsWith("（") &&
+      !trimmedLine.endsWith("）") &&
+      !trimmedLine.includes("「") &&
+      !trimmedLine.includes("」") &&
+      !trimmedLine.includes("。") &&
+      !trimmedLine.includes("、") &&
+      !trimmedLine.includes("？") &&
+      !trimmedLine.includes("！")
     ) {
       return {
-        character: line.trim(),
+        character: trimmedLine,
         text: "",
         isMonologue: false,
       };
@@ -262,18 +298,17 @@ export class ScenarioParser implements IScenarioParser {
 
     // モノローグテキスト（長い行で、特殊記号がない場合）
     if (
-      line &&
-      line.length > 5 &&
-      !line.includes("【") &&
-      !line.includes("】") &&
-      !line.startsWith("（") &&
-      !line.endsWith("）") &&
-      !line.includes("「") &&
-      !line.includes("」")
+      trimmedLine.length > ScenarioParser.MIN_MONOLOGUE_LENGTH &&
+      !trimmedLine.includes("【") &&
+      !trimmedLine.includes("】") &&
+      !trimmedLine.startsWith("（") &&
+      !trimmedLine.endsWith("）") &&
+      !trimmedLine.includes("「") &&
+      !trimmedLine.includes("」")
     ) {
       return {
         character: "",
-        text: line,
+        text: trimmedLine,
         isMonologue: true,
       };
     }
@@ -285,6 +320,11 @@ export class ScenarioParser implements IScenarioParser {
    * 選択肢の解析
    */
   parseChoices(lines: string[]): ChoiceData[] {
+    // 入力検証
+    if (!Array.isArray(lines) || lines.length === 0) {
+      return [];
+    }
+
     const choices: ChoiceData[] = [];
     let choiceId = 1;
 
@@ -293,19 +333,24 @@ export class ScenarioParser implements IScenarioParser {
       if (!line) continue;
 
       // 【選択肢】タグの検出
-      if (line.includes("【選択肢】")) {
+      if (line.includes(ScenarioParser.DIRECTIVE_PATTERNS.choice)) {
         // 次の行から選択肢テキストを探す
         for (let j = i + 1; j < lines.length; j++) {
           const choiceLine = lines[j]?.trim();
           if (!choiceLine) continue;
 
           // 選択肢終了の判定
-          if (choiceLine.startsWith("【") || choiceLine === "---") {
+          if (
+            choiceLine.startsWith("【") ||
+            choiceLine === ScenarioParser.CONTENT_SEPARATOR
+          ) {
             break;
           }
 
           // 選択肢テキストの解析
-          const choiceMatch = choiceLine.match(/^(.+?)(?:→(.+))?$/);
+          const choiceMatch = choiceLine.match(
+            ScenarioParser.REGEX_PATTERNS.choiceRoute
+          );
           if (choiceMatch) {
             const text = choiceMatch[1]?.trim();
             const routeHint = choiceMatch[2]?.trim();
