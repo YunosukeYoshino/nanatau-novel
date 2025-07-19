@@ -252,6 +252,85 @@ export class StoryEngine implements IStoryEngine {
   }
 
   /**
+   * シナリオデータを設定
+   */
+  setScenario(scenarioData: ScenarioData): void {
+    this.currentScenario = scenarioData;
+    this.currentSceneIndex = 0;
+    this.gameState.currentSceneIndex = 0;
+    this.gameState.currentScenarioPath = scenarioData.metadata?.title || "";
+  }
+
+  /**
+   * ゲーム状態を設定（統合テスト用）
+   */
+  setState(gameState: GameState): void {
+    this.setGameState(gameState);
+  }
+
+  /**
+   * 現在のゲーム状態を取得（統合テスト用）
+   */
+  getCurrentState(): GameState {
+    return {
+      ...this.gameState,
+    };
+  }
+
+  /**
+   * ゲーム進行度を取得（0-1の範囲）
+   */
+  getGameProgress(): number {
+    if (!this.currentScenario) {
+      return 0;
+    }
+    return this.currentSceneIndex / this.currentScenario.scenes.length;
+  }
+
+  /**
+   * 選択肢履歴を取得
+   */
+  getChoiceHistory(): Array<{
+    choiceId: string;
+    sceneId: string;
+    timestamp: number;
+  }> {
+    return this.gameState.choices.map((choice) => ({
+      choiceId: choice.choiceId || "",
+      sceneId: choice.sceneId || "",
+      timestamp: choice.timestamp || Date.now(),
+    }));
+  }
+
+  /**
+   * ストーリー開始
+   */
+  startStory(): void {
+    if (!this.currentScenario || this.currentScenario.scenes.length === 0) {
+      console.warn("No scenario loaded or empty scenario");
+      return;
+    }
+
+    this.currentSceneIndex = 0;
+    this.gameState.currentSceneIndex = 0;
+    const firstScene = this.currentScenario.scenes[0];
+    if (firstScene) {
+      this.gameState.visitedScenes.add(firstScene.id);
+    }
+    console.log("Story started");
+  }
+
+  /**
+   * 破棄処理
+   */
+  async destroy(): Promise<void> {
+    this.currentScenario = null;
+    this.currentSceneIndex = 0;
+    this.gameState = this.createInitialGameState();
+    console.log("StoryEngine destroyed");
+  }
+
+  /**
    * デバッグ情報の取得
    */
   getDebugInfo(): Record<string, unknown> {
