@@ -74,6 +74,71 @@ npm run check:fix      # Biome統合修正
 5. **コミット**: 作業完了後は必ずコミット・プッシュを実行
 6. **テスト**: 機能実装後は必ずテスト実行
 
+## 🔒 セキュリティ・設定値ルール
+### **🚨 最重要**: ハードコードの完全禁止
+
+**絶対にハードコードしてはいけないもの:**
+- **環境変数**: API_KEY、DATABASE_URL、SECRET_KEY等
+- **APIキー・トークン**: すべてのAPIアクセス認証情報
+- **パスワード・秘密鍵**: あらゆる認証情報
+- **外部サービスURL**: 本番・開発環境のエンドポイント
+- **データベース接続情報**: ホスト名、ポート、認証情報
+- **設定値**: 環境依存の設定パラメータ
+
+### 正しい設定管理方法
+
+#### ✅ 推奨パターン
+```typescript
+// ❌ 禁止: 直接ハードコード
+const API_KEY = "sk-1234567890abcdef";
+const DATABASE_URL = "mongodb://localhost:27017/nanatau";
+
+// ✅ 推奨: 環境変数から取得
+const API_KEY = process.env.API_KEY || "";
+const DATABASE_URL = process.env.DATABASE_URL || "";
+
+// ✅ 推奨: 設定ファイル経由
+interface GameConfig {
+  apiEndpoint: string;
+  timeout: number;
+  retryCount: number;
+}
+
+const config: GameConfig = {
+  apiEndpoint: process.env.API_ENDPOINT || "http://localhost:3000",
+  timeout: parseInt(process.env.REQUEST_TIMEOUT || "5000"),
+  retryCount: parseInt(process.env.RETRY_COUNT || "3"),
+};
+```
+
+#### 環境変数管理
+```bash
+# .env.example（テンプレートファイル）
+API_KEY=your_api_key_here
+DATABASE_URL=your_database_url_here
+GAME_TITLE=ななたう
+DEBUG_MODE=false
+
+# .env.local（実際の値、.gitignoreに含める）
+API_KEY=actual_secret_key
+DATABASE_URL=mongodb://prod-server:27017/nanatau
+GAME_TITLE=ななたう
+DEBUG_MODE=true
+```
+
+### セキュリティ要件
+1. **すべての機密情報は環境変数で管理**
+2. **`.env`ファイルは`.gitignore`に追加**
+3. **`.env.example`でテンプレート提供**
+4. **設定値の型安全性確保**
+5. **デフォルト値の適切な設定**
+
+### 例外的なハードコード許可ケース
+以下の場合のみ、明確なコメントを付けてハードコード可能：
+- **定数値**: `MAX_SAVE_SLOTS = 20` 等のゲーム仕様
+- **設定テンプレート**: デフォルト値として明示的に定義
+- **開発用モック**: テスト環境でのみ使用する値
+
 ## 🚫 型安全性ルール
 ### **重要**: TypeScript型安全性の徹底
 - **`any`型の使用禁止**: `any`型を使用して型チェックを回避することは絶対禁止
@@ -262,4 +327,4 @@ EOF
 - **Bun**: 高速ランタイム設定
 
 ---
-*最終更新: 2025-07-16*
+*最終更新: 2025-07-19*
