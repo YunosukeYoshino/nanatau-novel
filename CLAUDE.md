@@ -74,6 +74,44 @@ npm run check:fix      # Biome統合修正
 5. **コミット**: 作業完了後は必ずコミット・プッシュを実行
 6. **テスト**: 機能実装後は必ずテスト実行
 
+## 🚫 型安全性ルール
+### **重要**: TypeScript型安全性の徹底
+- **`any`型の使用禁止**: `any`型を使用して型チェックを回避することは絶対禁止
+- **`unknown`型の濫用禁止**: `unknown`型を使用して型を無理やり通すことは禁止
+- **適切な型定義**: 必ず具体的で適切な型を定義すること
+- **型アサーション制限**: `as`キーワードによる型アサーションは最小限に留める
+- **ユニオン型活用**: 複数の型が想定される場合はユニオン型（`Type1 | Type2`）を使用
+- **ジェネリック活用**: 汎用的な型が必要な場合はジェネリック（`<T>`）を使用
+
+### 推奨パターン
+```typescript
+// ❌ 禁止: any型の使用
+function processData(data: any): any { }
+
+// ❌ 禁止: unknown型の濫用
+function processData(data: unknown): unknown { }
+
+// ✅ 推奨: 具体的な型定義
+interface UserData {
+  id: string;
+  name: string;
+  age?: number;
+}
+function processData(data: UserData): ProcessedData { }
+
+// ✅ 推奨: ユニオン型
+function processData(data: string | number | UserData): ProcessedData { }
+
+// ✅ 推奨: ジェネリック
+function processData<T extends BaseData>(data: T): ProcessedData<T> { }
+```
+
+### 例外的な使用ケース
+以下の場合のみ、十分な理由とコメントを付けて使用可能：
+- 外部ライブラリとの互換性維持（明確なコメント必須）
+- 段階的な型安全性導入の一時的措置（TODO コメント必須）
+- JSONパース等の型が動的に決まる場合（適切な型ガードと組み合わせ）
+
 ## 🔄 ワークフロー
 1. 計画ファイル確認 → 2. 新ブランチ作成・チェックアウト → 3. 実装 → 4. 品質チェック → 5. コミット・プッシュ → 6. プルリクエスト作成 → 7. レビューコメント確認・対応 → 8. 進捗更新
 
