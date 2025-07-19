@@ -35,37 +35,54 @@ export interface GameConfig {
 export interface SceneData {
   id: string;
   type: "dialogue" | "choice" | "background" | "character" | "directive";
-  content: string;
-  character?: string;
-  background?: string;
-  bgm?: string;
-  se?: string;
-  choices?: ChoiceData[];
+  character: string | null;
+  text: string;
+  choices: ChoiceData[] | null;
+  directives: DirectiveData[];
+  metadata: {
+    sceneNumber: number;
+    tags: string[];
+    estimatedReadTime: number;
+  };
 }
 
 // 選択肢データ
 export interface ChoiceData {
   id: string;
   text: string;
-  routeId: string;
-  condition?: string;
-  nextScene?: string;
+  flags?: Record<string, boolean>;
+  variables?: Record<string, unknown>;
+  routeId?: string;
+  jumpTo?: string;
+  conditions?: RouteCondition[];
 }
 
 // シナリオデータ
 export interface ScenarioData {
-  title: string;
-  chapter: string;
+  metadata: {
+    title: string;
+    author: string;
+    version: string;
+    description: string;
+    tags: string[];
+    estimatedPlayTime: number;
+    lastModified: Date;
+  };
   scenes: SceneData[];
 }
 
 // ゲーム状態
 export interface GameState {
-  currentScene: string;
-  currentRoute: string;
-  choiceHistory: string[];
-  gameVariables: Record<string, any>;
-  timestamp: number;
+  currentScenarioPath: string;
+  currentSceneIndex: number;
+  currentRouteId: string;
+  variables: Map<string, unknown>;
+  flags: Map<string, boolean>;
+  visitedScenes: Set<string>;
+  choices: ChoiceHistory[];
+  inventory: string[];
+  playerName: string;
+  lastSaveTimestamp: number;
 }
 
 // セーブスロット情報
@@ -87,7 +104,7 @@ export interface DirectiveData {
     | "emotion"
     | "effect";
   value: string;
-  options?: Record<string, any>;
+  options?: Record<string, unknown>;
 }
 
 // 台詞データ
@@ -104,4 +121,26 @@ export enum MenuType {
   SAVE = "save",
   LOAD = "load",
   SETTINGS = "settings",
+}
+
+// 選択履歴
+export interface ChoiceHistory {
+  sceneId: string;
+  choiceId: string;
+  choiceText: string;
+  timestamp: number;
+}
+
+// ルート条件
+export interface RouteCondition {
+  type: "flag" | "variable" | "choice_history" | "route";
+  key: string;
+  operator:
+    | "equals"
+    | "not_equals"
+    | "greater_than"
+    | "less_than"
+    | "greater_equal"
+    | "less_equal";
+  value: unknown;
 }

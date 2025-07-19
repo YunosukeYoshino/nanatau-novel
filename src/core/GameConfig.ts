@@ -1,28 +1,19 @@
 /**
- * ゲーム設定のデフォルト値と管理クラス
+ * ゲーム設定管理クラス
  */
 
 import type { GameConfig } from "../types/core.js";
-import type { IConfigManager } from "../types/interfaces.js";
 
-export class ConfigManager implements IConfigManager {
-  private static instance: ConfigManager;
-  private currentConfig: GameConfig;
-  private readonly STORAGE_KEY = "nanatau-game-config";
+export class GameConfigManager {
+  private config: GameConfig;
 
-  private constructor() {
-    this.currentConfig = this.getDefaultConfig();
-  }
-
-  public static getInstance(): ConfigManager {
-    if (!ConfigManager.instance) {
-      ConfigManager.instance = new ConfigManager();
-    }
-    return ConfigManager.instance;
+  constructor(initialConfig?: Partial<GameConfig>) {
+    const defaultConfig = this.getDefaultConfig();
+    this.config = this.mergeConfigs(defaultConfig, initialConfig || {});
   }
 
   /**
-   * デフォルト設定の取得
+   * デフォルト設定を取得
    */
   public getDefaultConfig(): GameConfig {
     return {
@@ -32,15 +23,15 @@ export class ConfigManager implements IConfigManager {
         fullscreen: false,
       },
       audio: {
-        masterVolume: 1.0,
-        bgmVolume: 0.8,
-        seVolume: 0.9,
-        voiceVolume: 1.0,
+        masterVolume: 0.8,
+        bgmVolume: 0.7,
+        seVolume: 0.8,
+        voiceVolume: 0.9,
       },
       text: {
-        speed: 50, // 文字表示速度（ms）
+        speed: 50,
         autoAdvance: false,
-        autoAdvanceDelay: 3000, // 自動進行の待機時間（ms）
+        autoAdvanceDelay: 2000,
       },
       skipRead: false,
       language: "ja",
@@ -48,61 +39,89 @@ export class ConfigManager implements IConfigManager {
   }
 
   /**
-   * 設定の読み込み
+   * 現在の設定を取得
+   */
+  public getConfig(): GameConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * 設定を更新
+   */
+  public updateConfig(partialConfig: Partial<GameConfig>): void {
+    const updatedConfig = this.mergeConfigs(this.config, partialConfig);
+
+    if (this.validateConfig(updatedConfig)) {
+      this.config = updatedConfig;
+    } else {
+      throw new Error("Invalid configuration values");
+    }
+  }
+
+  /**
+   * 設定をローカルストレージに保存
+   */
+  public saveConfig(): void {
+    try {
+      const configJson = JSON.stringify(this.config);
+      localStorage.setItem("nanatau_game_config", configJson);
+    } catch (error) {
+      console.error("Failed to save config:", error);
+    }
+  }
+
+  /**
+   * ローカルストレージから設定を読み込み
    */
   public loadConfig(): GameConfig {
     try {
-      const savedConfig = localStorage.getItem(this.STORAGE_KEY);
-      if (savedConfig) {
-        const parsedConfig = JSON.parse(savedConfig);
-        // デフォルト設定とマージして不足項目を補完
-        this.currentConfig = this.mergeConfigs(
-          this.getDefaultConfig(),
-          parsedConfig
-        );
-      } else {
-        this.currentConfig = this.getDefaultConfig();
+      const saved = localStorage.getItem("nanatau_game_config");
+      if (saved) {
+        const parsedConfig = JSON.parse(saved);
+        if (this.validateConfig(parsedConfig)) {
+          this.config = this.mergeConfigs(
+            this.getDefaultConfig(),
+            parsedConfig
+          );
+        }
       }
     } catch (error) {
-      console.warn("Failed to load config, using default:", error);
-      this.currentConfig = this.getDefaultConfig();
+      console.error("Failed to load config:", error);
+      this.config = this.getDefaultConfig();
     }
 
-    return this.currentConfig;
+    return this.getConfig();
   }
 
   /**
-   * 設定の保存
+   * 設定をリセット（デフォルトに戻す）
    */
-  public saveConfig(config: GameConfig): void {
-    try {
-      this.currentConfig = config;
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(config));
-    } catch (error) {
-      console.error("Failed to save config:", error);
-      throw new Error("設定の保存に失敗しました");
-    }
+  public resetConfig(): void {
+    this.config = this.getDefaultConfig();
   }
 
   /**
-   * 設定の部分更新
+   * 特定の設定値を取得
    */
-  public updateConfig(partialConfig: Partial<GameConfig>): void {
-    this.currentConfig = this.mergeConfigs(this.currentConfig, partialConfig);
-    this.saveConfig(this.currentConfig);
+  public get<K extends keyof GameConfig>(key: K): GameConfig[K] {
+    return this.config[key];
   }
 
   /**
-   * 現在の設定を取得
+   * 特定の設定値を設定
    */
-  public getCurrentConfig(): GameConfig {
-    return { ...this.currentConfig };
+  public set<K extends keyof GameConfig>(key: K, value: GameConfig[K]): void {
+    const partialUpdate = { [key]: value } as Partial<GameConfig>;
+    this.updateConfig(partialUpdate);
   }
 
   /**
    * 設定のマージ（深いマージ）
    */
-  private mergeConfigs(defaultConfig: GameConfig, userConfig: any): GameConfig {
+  private mergeConfigs(
+    defaultConfig: GameConfig,
+    userConfig: Partial<GameConfig>
+  ): GameConfig {
     const merged = { ...defaultConfig };
 
     if (userConfig.screen) {
@@ -117,11 +136,11 @@ export class ConfigManager implements IConfigManager {
       merged.text = { ...defaultConfig.text, ...userConfig.text };
     }
 
-    if (typeof userConfig.skipRead === "boolean") {
+    if (userConfig.skipRead !== undefined) {
       merged.skipRead = userConfig.skipRead;
     }
 
-    if (typeof userConfig.language === "string") {
+    if (userConfig.language !== undefined) {
       merged.language = userConfig.language;
     }
 
@@ -129,45 +148,72 @@ export class ConfigManager implements IConfigManager {
   }
 
   /**
-   * 設定のリセット
-   */
-  public resetToDefault(): void {
-    this.currentConfig = this.getDefaultConfig();
-    this.saveConfig(this.currentConfig);
-  }
-
-  /**
    * 設定の検証
    */
-  public validateConfig(config: any): boolean {
+  public validateConfig(config: unknown): config is GameConfig {
     try {
-      // 基本構造の確認
-      if (!config || typeof config !== "object") return false;
-
-      // 必須プロパティの確認
-      const requiredProps = ["screen", "audio", "text"];
-      for (const prop of requiredProps) {
-        if (!config[prop] || typeof config[prop] !== "object") return false;
+      if (!config || typeof config !== "object" || config === null) {
+        return false;
       }
 
+      const configObj = config as Record<string, unknown>;
+
+      // 必須プロパティの確認
+      if (
+        !configObj["screen"] ||
+        typeof configObj["screen"] !== "object" ||
+        !configObj["audio"] ||
+        typeof configObj["audio"] !== "object" ||
+        !configObj["text"] ||
+        typeof configObj["text"] !== "object"
+      ) {
+        return false;
+      }
+
+      const audio = configObj["audio"] as Record<string, unknown>;
+      const text = configObj["text"] as Record<string, unknown>;
+
       // 数値範囲の確認
-      if (config.audio.masterVolume < 0 || config.audio.masterVolume > 1)
+      if (
+        typeof audio["masterVolume"] !== "number" ||
+        audio["masterVolume"] < 0 ||
+        audio["masterVolume"] > 1
+      )
         return false;
-      if (config.audio.bgmVolume < 0 || config.audio.bgmVolume > 1)
+      if (
+        typeof audio["bgmVolume"] !== "number" ||
+        audio["bgmVolume"] < 0 ||
+        audio["bgmVolume"] > 1
+      )
         return false;
-      if (config.audio.seVolume < 0 || config.audio.seVolume > 1) return false;
-      if (config.audio.voiceVolume < 0 || config.audio.voiceVolume > 1)
+      if (
+        typeof audio["seVolume"] !== "number" ||
+        audio["seVolume"] < 0 ||
+        audio["seVolume"] > 1
+      )
+        return false;
+      if (
+        typeof audio["voiceVolume"] !== "number" ||
+        audio["voiceVolume"] < 0 ||
+        audio["voiceVolume"] > 1
+      )
         return false;
 
-      if (config.text.speed < 1 || config.text.speed > 1000) return false;
       if (
-        config.text.autoAdvanceDelay < 100 ||
-        config.text.autoAdvanceDelay > 10000
+        typeof text["speed"] !== "number" ||
+        text["speed"] < 1 ||
+        text["speed"] > 1000
+      )
+        return false;
+      if (
+        typeof text["autoAdvanceDelay"] !== "number" ||
+        text["autoAdvanceDelay"] < 100 ||
+        text["autoAdvanceDelay"] > 10000
       )
         return false;
 
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
