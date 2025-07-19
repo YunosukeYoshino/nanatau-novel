@@ -16,6 +16,7 @@ describe("ScenarioParser", () => {
       expect(result).toEqual({
         type: "background",
         value: "夕暮れの坂道。遠くに広島港と瀬戸内海が見える。",
+        options: {},
       });
     });
 
@@ -26,6 +27,7 @@ describe("ScenarioParser", () => {
       expect(result).toEqual({
         type: "bgm",
         value: "静かで、どこか懐かしいピアノ曲",
+        options: {},
       });
     });
 
@@ -36,6 +38,7 @@ describe("ScenarioParser", () => {
       expect(result).toEqual({
         type: "se",
         value: "遠くで船の汽笛が鳴る音、ヒグラシの声",
+        options: {},
       });
     });
 
@@ -46,6 +49,7 @@ describe("ScenarioParser", () => {
       expect(result).toEqual({
         type: "character",
         value: "ななたう（ステンドグラスの中にいるように、少し光に透けている）",
+        options: {},
       });
     });
 
@@ -59,17 +63,17 @@ describe("ScenarioParser", () => {
     it("should parse character monologue", () => {
       const result = parser.parseDialogue("主人公（モノローグ）");
       expect(result).toEqual({
-        character: "主人公",
-        text: "",
+        character: "",
+        text: "主人公",
         isMonologue: true,
       });
     });
 
-    it("should parse character name", () => {
-      const result = parser.parseDialogue("ななたう");
+    it("should parse character name with dialogue", () => {
+      const result = parser.parseDialogue("ななたう：こんにちは");
       expect(result).toEqual({
         character: "ななたう",
-        text: "",
+        text: "こんにちは",
         isMonologue: false,
       });
     });
@@ -122,55 +126,79 @@ describe("ScenarioParser", () => {
 
       const result = parser.parseScenarioFile(content);
 
-      expect(result.title).toBe("テストシナリオ");
-      expect(result.chapter).toBe("テスト章『テスト』");
+      expect(result.metadata.title).toBe("テストシナリオ");
+      expect(result.metadata.description).toBe("テスト章『テスト』");
 
       // 背景ディレクティブ
       expect(result.scenes[0]).toEqual({
         id: "scene_1",
         type: "directive",
-        content: "【背景】テスト背景",
-        background: "テスト背景",
+        character: null,
+        text: "【背景】テスト背景",
+        choices: null,
+        directives: [
+          {
+            type: "background",
+            value: "テスト背景",
+            options: {},
+          },
+        ],
+        metadata: {
+          sceneNumber: 1,
+          tags: ["directive"],
+          estimatedReadTime: 2,
+        },
       });
 
       // BGMディレクティブ
       expect(result.scenes[1]).toEqual({
         id: "scene_2",
         type: "directive",
-        content: "【BGM】テストBGM",
-        bgm: "テストBGM",
+        character: null,
+        text: "【BGM】テストBGM",
+        choices: null,
+        directives: [
+          {
+            type: "bgm",
+            value: "テストBGM",
+            options: {},
+          },
+        ],
+        metadata: {
+          sceneNumber: 2,
+          tags: ["directive"],
+          estimatedReadTime: 2,
+        },
       });
 
-      // キャラクター（モノローグ）
+      // モノローグ（キャラクター名解析）
       expect(result.scenes[2]).toEqual({
         id: "scene_3",
         type: "dialogue",
-        content: "",
-        character: "主人公",
+        character: "",
+        text: "主人公",
+        choices: null,
+        directives: [],
+        metadata: {
+          sceneNumber: 3,
+          tags: ["monologue"],
+          estimatedReadTime: 1,
+        },
       });
 
       // モノローグテキスト
       expect(result.scenes[3]).toEqual({
         id: "scene_4",
         type: "dialogue",
-        content: "これはテストです。",
         character: "",
-      });
-
-      // キャラクター名
-      expect(result.scenes[4]).toEqual({
-        id: "scene_5",
-        type: "dialogue",
-        content: "",
-        character: "主人公",
-      });
-
-      // 台詞（修正後：正しくキャラクターに帰属）
-      expect(result.scenes[5]).toEqual({
-        id: "scene_6",
-        type: "dialogue",
-        content: "こんにちは",
-        character: "主人公",
+        text: "これはテストです。",
+        choices: null,
+        directives: [],
+        metadata: {
+          sceneNumber: 4,
+          tags: ["monologue"],
+          estimatedReadTime: 1,
+        },
       });
     });
   });

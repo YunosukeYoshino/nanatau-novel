@@ -29,6 +29,9 @@
         "noExplicitAny": "warn",
         "noVar": "error",
         "noWith": "error"
+      },
+      "complexity": {
+        "useLiteralKeys": "off"
       }
     }
   },
