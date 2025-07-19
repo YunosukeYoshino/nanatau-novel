@@ -30,7 +30,7 @@ export class GameStateManager {
   private totalPlayTime: number = 0;
 
   constructor(
-    initialGameState: GameState,
+    initialGameState?: GameState,
     config?: Partial<GameStateManagerConfig>
   ) {
     this.config = {
@@ -41,12 +41,53 @@ export class GameStateManager {
       ...config,
     };
 
-    this.currentGameState = this.deepCloneGameState(initialGameState);
+    this.currentGameState = this.deepCloneGameState(
+      initialGameState || this.createDefaultGameState()
+    );
     this.startTime = Date.now();
 
     if (this.config.enablePersistence) {
       this.setupPersistence();
     }
+  }
+
+  /**
+   * デフォルトのゲーム状態を作成
+   */
+  private createDefaultGameState(): GameState {
+    return {
+      currentScenarioPath: "",
+      currentSceneIndex: 0,
+      currentRouteId: "main",
+      variables: new Map<string, unknown>(),
+      flags: new Map<string, boolean>(),
+      visitedScenes: new Set<string>(),
+      choices: [],
+      inventory: [],
+      playerName: "",
+      lastSaveTimestamp: Date.now(),
+    };
+  }
+
+  /**
+   * 初期化
+   */
+  async initialize(): Promise<void> {
+    // 必要に応じて初期化処理を追加
+    console.log("GameStateManager initialized");
+  }
+
+  /**
+   * 破棄処理
+   */
+  async destroy(): Promise<void> {
+    // オートセーブタイマーを停止
+    if (this.autoSaveTimer) {
+      clearInterval(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
+
+    console.log("GameStateManager destroyed");
   }
 
   /**

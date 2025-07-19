@@ -2,8 +2,6 @@
  * 音声・音楽システム - BGM、効果音、ボイスの再生と管理
  */
 
-// import PixiVN from "@drincs/pixi-vn"; // TODO: 音声実装時に使用
-import type { GameConfig } from "../types/core.js";
 import type { IAudioManager } from "../types/interfaces.js";
 
 export interface AudioConfig {
@@ -39,179 +37,113 @@ export interface AudioTrack {
 }
 
 export class AudioSystem implements IAudioManager {
-  private config: GameConfig;
   private bgmTracks: Map<string, AudioTrack> = new Map();
   private seTracks: Map<string, AudioTrack> = new Map();
   private voiceTracks: Map<string, AudioTrack> = new Map();
   private currentBGM: AudioTrack | null = null;
+  private currentVoice: AudioTrack | null = null;
   private masterVolume: number = 1.0;
   private bgmVolume: number = 0.7;
   private seVolume: number = 0.8;
   private voiceVolume: number = 0.9;
+  private bgmMuted: boolean = false;
+  private seMuted: boolean = false;
+  private voiceMuted: boolean = false;
   private audioContext: AudioContext | null = null;
-
-  constructor(config: GameConfig) {
-    this.config = config;
-    console.log("AudioSystem initialized with config:", {
-      screenWidth: config.screenWidth,
-      screenHeight: config.screenHeight,
-      version: config.version,
-    });
-
-    // TODO: Phase 5 - configを使用した初期化処理を追加
-    this.masterVolume = config.screenWidth
-      ? Math.min(config.screenWidth / 1280, 1.0)
-      : 1.0;
-    this.initializeAudioContext();
-  }
+  private isInitialized: boolean = false;
+  private fadeIntervals: Map<string, NodeJS.Timeout> = new Map();
 
   /**
-   * 音声システムの初期化
+   * 初期化
    */
   async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
+
     try {
-      // Web Audio APIの初期化
-      if (!this.audioContext) {
-        this.audioContext = new (
-          window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext })
-            .webkitAudioContext
-        )();
-      }
+      // AudioContextの作成
+      this.audioContext = new AudioContext();
+      await this.audioContext.resume();
 
-      // ユーザージェスチャーによるオーディオコンテキストの開始
-      if (this.audioContext.state === "suspended") {
-        await this.audioContext.resume();
-      }
-
+      this.isInitialized = true;
       console.log("AudioSystem initialized");
     } catch (error) {
       console.error("Failed to initialize AudioSystem:", error);
+      throw error;
     }
   }
 
   /**
-   * AudioContextの初期化
+   * 初期化状態の取得
    */
-  private initializeAudioContext(): void {
+  getIsInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
+   * BGMの読み込み
+   */
+  async loadBGM(
+    id: string,
+    filePath: string,
+    config?: AudioConfig
+  ): Promise<void> {
+    if (!this.isInitialized) {
+      console.warn("AudioSystem not initialized");
+      return;
+    }
+
     try {
-      this.audioContext = new (
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext
-      )();
+      const audioElement = new Audio(filePath);
+      const track: AudioTrack = {
+        id,
+        filePath,
+        audioElement,
+        volume: config?.volume || this.bgmVolume,
+        loop: config?.loop || true,
+        isPlaying: false,
+        isPaused: false,
+        isFading: false,
+      };
+
+      audioElement.loop = track.loop;
+      audioElement.volume = track.volume * this.masterVolume;
+
+      this.bgmTracks.set(id, track);
     } catch (error) {
-      console.warn("Web Audio API not supported:", error);
+      console.error(`Failed to load BGM: ${id}`, error);
     }
   }
 
   /**
    * BGMの再生
    */
-  async playBGM(
-    filePath: string,
-    loop: boolean = true,
-    config: AudioConfig = {}
-  ): Promise<void> {
+  async playBGM(id: string): Promise<void> {
+    if (!this.isInitialized) {
+      console.warn("AudioSystem not initialized");
+      return;
+    }
+
+    const track = this.bgmTracks.get(id);
+    if (!track) {
+      console.warn(`BGM not found: ${id}`);
+      return;
+    }
+
     try {
       // 現在のBGMを停止
-      if (this.currentBGM) {
+      if (this.currentBGM && this.currentBGM !== track) {
         await this.stopBGM();
       }
 
-      // 新しいBGMを作成
-      const track = await this.createAudioTrack(filePath, {
-        volume: this.bgmVolume * this.masterVolume,
-        loop,
-        ...config,
-      });
-
-      if (!track) {
-        console.error(`Failed to create BGM track: ${filePath}`);
-        return;
-      }
-
-      this.bgmTracks.set(track.id, track);
+      track.audioElement.currentTime = 0;
+      await track.audioElement.play();
+      track.isPlaying = true;
+      track.isPaused = false;
       this.currentBGM = track;
-
-      // フェードイン再生
-      if (config.fadeInDuration && config.fadeInDuration > 0) {
-        await this.fadeIn(track, config.fadeInDuration);
-      } else {
-        track.audioElement.play();
-        track.isPlaying = true;
-      }
-
-      console.log(`BGM started: ${filePath}`);
     } catch (error) {
-      console.error(`Failed to play BGM: ${filePath}`, error);
-    }
-  }
-
-  /**
-   * 効果音の再生
-   */
-  async playSE(filePath: string, config: AudioConfig = {}): Promise<void> {
-    try {
-      const track = await this.createAudioTrack(filePath, {
-        volume: this.seVolume * this.masterVolume,
-        loop: false,
-        ...config,
-      });
-
-      if (!track) {
-        console.error(`Failed to create SE track: ${filePath}`);
-        return;
-      }
-
-      this.seTracks.set(track.id, track);
-
-      // 再生終了時の自動削除
-      track.audioElement.addEventListener("ended", () => {
-        this.seTracks.delete(track.id);
-      });
-
-      track.audioElement.play();
-      track.isPlaying = true;
-
-      console.log(`SE played: ${filePath}`);
-    } catch (error) {
-      console.error(`Failed to play SE: ${filePath}`, error);
-    }
-  }
-
-  /**
-   * ボイスの再生
-   */
-  async playVoice(filePath: string, config: AudioConfig = {}): Promise<void> {
-    try {
-      // 他のボイスを停止
-      this.stopAllVoices();
-
-      const track = await this.createAudioTrack(filePath, {
-        volume: this.voiceVolume * this.masterVolume,
-        loop: false,
-        ...config,
-      });
-
-      if (!track) {
-        console.error(`Failed to create voice track: ${filePath}`);
-        return;
-      }
-
-      this.voiceTracks.set(track.id, track);
-
-      // 再生終了時の自動削除
-      track.audioElement.addEventListener("ended", () => {
-        this.voiceTracks.delete(track.id);
-      });
-
-      track.audioElement.play();
-      track.isPlaying = true;
-
-      console.log(`Voice played: ${filePath}`);
-    } catch (error) {
-      console.error(`Failed to play voice: ${filePath}`, error);
+      console.error(`Failed to play BGM: ${id}`, error);
     }
   }
 
@@ -219,388 +151,452 @@ export class AudioSystem implements IAudioManager {
    * BGMの停止
    */
   async stopBGM(): Promise<void> {
-    if (!this.currentBGM) {
-      return;
-    }
-
-    try {
+    if (this.currentBGM) {
       this.currentBGM.audioElement.pause();
       this.currentBGM.audioElement.currentTime = 0;
       this.currentBGM.isPlaying = false;
-      this.bgmTracks.delete(this.currentBGM.id);
+      this.currentBGM.isPaused = false;
       this.currentBGM = null;
-
-      console.log("BGM stopped");
-    } catch (error) {
-      console.error("Failed to stop BGM:", error);
     }
-  }
-
-  /**
-   * 効果音の停止
-   */
-  stopSE(): void {
-    try {
-      for (const track of this.seTracks.values()) {
-        track.audioElement.pause();
-        track.audioElement.currentTime = 0;
-        track.isPlaying = false;
-      }
-      this.seTracks.clear();
-
-      console.log("All SE stopped");
-    } catch (error) {
-      console.error("Failed to stop SE:", error);
-    }
-  }
-
-  /**
-   * 全ボイスの停止
-   */
-  stopAllVoices(): void {
-    try {
-      for (const track of this.voiceTracks.values()) {
-        track.audioElement.pause();
-        track.audioElement.currentTime = 0;
-        track.isPlaying = false;
-      }
-      this.voiceTracks.clear();
-
-      console.log("All voices stopped");
-    } catch (error) {
-      console.error("Failed to stop voices:", error);
-    }
-  }
-
-  /**
-   * マスター音量の設定
-   */
-  setMasterVolume(volume: number): void {
-    this.masterVolume = Math.max(0, Math.min(1, volume));
-    this.updateAllVolumes();
-    console.log(`Master volume set to: ${this.masterVolume}`);
   }
 
   /**
    * BGM音量の設定
    */
-  setBGMVolume(volume: number): void {
+  async setBGMVolume(volume: number): Promise<void> {
     this.bgmVolume = Math.max(0, Math.min(1, volume));
-    this.updateBGMVolume();
-    console.log(`BGM volume set to: ${this.bgmVolume}`);
+
+    // 全BGMトラックの音量を更新
+    for (const track of this.bgmTracks.values()) {
+      if (!this.bgmMuted) {
+        track.audioElement.volume = this.bgmVolume * this.masterVolume;
+        track.volume = this.bgmVolume;
+      }
+    }
   }
 
   /**
-   * 効果音音量の設定
+   * 効果音の読み込み
    */
-  setSEVolume(volume: number): void {
-    this.seVolume = Math.max(0, Math.min(1, volume));
-    this.updateSEVolume();
-    console.log(`SE volume set to: ${this.seVolume}`);
-  }
-
-  /**
-   * ボイス音量の設定
-   */
-  setVoiceVolume(volume: number): void {
-    this.voiceVolume = Math.max(0, Math.min(1, volume));
-    this.updateVoiceVolume();
-    console.log(`Voice volume set to: ${this.voiceVolume}`);
-  }
-
-  /**
-   * BGMのフェード効果
-   */
-  async fadeBGM(duration: number, targetVolume: number): Promise<void> {
-    if (!this.currentBGM) {
-      console.warn("No BGM to fade");
+  async loadSE(
+    id: string,
+    filePath: string,
+    config?: AudioConfig
+  ): Promise<void> {
+    if (!this.isInitialized) {
+      console.warn("AudioSystem not initialized");
       return;
     }
 
     try {
-      await this.fadeToVolume(
-        this.currentBGM,
-        targetVolume * this.masterVolume,
-        duration
-      );
-      console.log(`BGM faded to volume: ${targetVolume}`);
-    } catch (error) {
-      console.error("Failed to fade BGM:", error);
-    }
-  }
-
-  /**
-   * オーディオトラックの作成
-   */
-  private async createAudioTrack(
-    filePath: string,
-    config: AudioConfig
-  ): Promise<AudioTrack | null> {
-    try {
-      const audio = new Audio(filePath);
-      const trackId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      // プリロード
-      audio.preload = "auto";
-
-      // 設定の適用
-      audio.volume = config.volume || 1.0;
-      audio.loop = config.loop || false;
-
-      if (config.startTime) {
-        audio.currentTime = config.startTime;
-      }
-
-      // ロード完了を待機
-      await new Promise<void>((resolve, reject) => {
-        const onCanPlay = () => {
-          audio.removeEventListener("canplaythrough", onCanPlay);
-          audio.removeEventListener("error", onError);
-          resolve();
-        };
-
-        const onError = () => {
-          audio.removeEventListener("canplaythrough", onCanPlay);
-          audio.removeEventListener("error", onError);
-          reject(new Error(`Failed to load audio: ${filePath}`));
-        };
-
-        audio.addEventListener("canplaythrough", onCanPlay);
-        audio.addEventListener("error", onError);
-
-        // タイムアウト設定
-        setTimeout(() => {
-          audio.removeEventListener("canplaythrough", onCanPlay);
-          audio.removeEventListener("error", onError);
-          reject(new Error(`Audio loading timeout: ${filePath}`));
-        }, 10000);
-      });
-
+      const audioElement = new Audio(filePath);
       const track: AudioTrack = {
-        id: trackId,
+        id,
         filePath,
-        audioElement: audio,
-        volume: config.volume || 1.0,
-        loop: config.loop || false,
+        audioElement,
+        volume: config?.volume || this.seVolume,
+        loop: config?.loop || false,
         isPlaying: false,
         isPaused: false,
         isFading: false,
       };
 
-      return track;
+      audioElement.loop = track.loop;
+      audioElement.volume = track.volume * this.masterVolume;
+
+      this.seTracks.set(id, track);
     } catch (error) {
-      console.error(`Failed to create audio track: ${filePath}`, error);
-      return null;
+      console.error(`Failed to load SE: ${id}`, error);
     }
   }
 
   /**
-   * フェードイン効果
+   * 効果音の再生
    */
-  private async fadeIn(track: AudioTrack, duration: number): Promise<void> {
-    track.isFading = true;
-    const targetVolume = track.volume;
-    track.audioElement.volume = 0;
-    track.audioElement.play();
-    track.isPlaying = true;
+  async playSE(id: string): Promise<void> {
+    if (!this.isInitialized) {
+      console.warn("AudioSystem not initialized");
+      return;
+    }
 
-    await this.fadeToVolume(track, targetVolume, duration);
-    track.isFading = false;
+    const track = this.seTracks.get(id);
+    if (!track) {
+      console.warn(`SE not found: ${id}`);
+      return;
+    }
+
+    try {
+      track.audioElement.currentTime = 0;
+      await track.audioElement.play();
+      track.isPlaying = true;
+      track.isPaused = false;
+    } catch (error) {
+      console.error(`Failed to play SE: ${id}`, error);
+    }
   }
 
   /**
-   * フェードアウト効果
+   * 効果音音量の設定
    */
-  async fadeOutTrack(track: AudioTrack, duration: number): Promise<void> {
-    track.isFading = true;
-    await this.fadeToVolume(track, 0, duration);
-    track.audioElement.pause();
-    track.isPlaying = false;
-    track.isFading = false;
+  async setSEVolume(volume: number): Promise<void> {
+    this.seVolume = Math.max(0, Math.min(1, volume));
+
+    // 全SEトラックの音量を更新
+    for (const track of this.seTracks.values()) {
+      if (!this.seMuted) {
+        track.audioElement.volume = this.seVolume * this.masterVolume;
+        track.volume = this.seVolume;
+      }
+    }
   }
 
   /**
-   * 指定音量へのフェード
+   * ボイスの読み込み
    */
-  private async fadeToVolume(
-    track: AudioTrack,
-    targetVolume: number,
-    duration: number
+  async loadVoice(
+    id: string,
+    filePath: string,
+    config?: AudioConfig
   ): Promise<void> {
-    return new Promise((resolve) => {
-      const startTime = Date.now();
-      const startVolume = track.audioElement.volume;
-      const volumeDiff = targetVolume - startVolume;
+    if (!this.isInitialized) {
+      console.warn("AudioSystem not initialized");
+      return;
+    }
 
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-
-        track.audioElement.volume = startVolume + volumeDiff * progress;
-
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          track.volume = targetVolume;
-          resolve();
-        }
+    try {
+      const audioElement = new Audio(filePath);
+      const track: AudioTrack = {
+        id,
+        filePath,
+        audioElement,
+        volume: config?.volume || this.voiceVolume,
+        loop: config?.loop || false,
+        isPlaying: false,
+        isPaused: false,
+        isFading: false,
       };
 
-      animate();
-    });
+      audioElement.loop = track.loop;
+      audioElement.volume = track.volume * this.masterVolume;
+
+      this.voiceTracks.set(id, track);
+    } catch (error) {
+      console.error(`Failed to load Voice: ${id}`, error);
+    }
   }
 
   /**
-   * 全音量の更新
+   * ボイスの再生
    */
-  private updateAllVolumes(): void {
-    this.updateBGMVolume();
-    this.updateSEVolume();
-    this.updateVoiceVolume();
+  async playVoice(id: string): Promise<void> {
+    if (!this.isInitialized) {
+      console.warn("AudioSystem not initialized");
+      return;
+    }
+
+    const track = this.voiceTracks.get(id);
+    if (!track) {
+      console.warn(`Voice not found: ${id}`);
+      return;
+    }
+
+    try {
+      // 現在のボイスを停止
+      if (this.currentVoice && this.currentVoice !== track) {
+        await this.stopVoice();
+      }
+
+      track.audioElement.currentTime = 0;
+      await track.audioElement.play();
+      track.isPlaying = true;
+      track.isPaused = false;
+      this.currentVoice = track;
+    } catch (error) {
+      console.error(`Failed to play Voice: ${id}`, error);
+    }
   }
 
   /**
-   * BGM音量の更新
+   * ボイスの停止
    */
-  private updateBGMVolume(): void {
+  async stopVoice(): Promise<void> {
+    if (this.currentVoice) {
+      this.currentVoice.audioElement.pause();
+      this.currentVoice.audioElement.currentTime = 0;
+      this.currentVoice.isPlaying = false;
+      this.currentVoice.isPaused = false;
+      this.currentVoice = null;
+    }
+  }
+
+  /**
+   * ボイス音量の設定
+   */
+  async setVoiceVolume(volume: number): Promise<void> {
+    this.voiceVolume = Math.max(0, Math.min(1, volume));
+
+    // 全ボイストラックの音量を更新
+    for (const track of this.voiceTracks.values()) {
+      if (!this.voiceMuted) {
+        track.audioElement.volume = this.voiceVolume * this.masterVolume;
+        track.volume = this.voiceVolume;
+      }
+    }
+  }
+
+  /**
+   * BGMフェードイン
+   */
+  fadeInBGM(duration: number): void {
+    if (!this.currentBGM) return;
+
+    const track = this.currentBGM;
+    const startVolume = 0;
+    const endVolume = this.bgmVolume;
+    const steps = 20;
+    const stepDuration = duration / steps;
+    const volumeStep = (endVolume - startVolume) / steps;
+
+    track.audioElement.volume = startVolume;
+    track.isFading = true;
+
+    let currentStep = 0;
+    const fadeInterval = setInterval(() => {
+      currentStep++;
+      const newVolume = Math.min(
+        startVolume + volumeStep * currentStep,
+        endVolume
+      );
+      track.audioElement.volume = newVolume * this.masterVolume;
+
+      if (currentStep >= steps) {
+        clearInterval(fadeInterval);
+        track.isFading = false;
+        this.fadeIntervals.delete(track.id);
+      }
+    }, stepDuration);
+
+    this.fadeIntervals.set(track.id, fadeInterval);
+  }
+
+  /**
+   * BGMフェードアウト
+   */
+  fadeOutBGM(duration: number): void {
+    if (!this.currentBGM) return;
+
+    const track = this.currentBGM;
+    const startVolume = this.bgmVolume;
+    const endVolume = 0;
+    const steps = 20;
+    const stepDuration = duration / steps;
+    const volumeStep = (startVolume - endVolume) / steps;
+
+    track.isFading = true;
+
+    let currentStep = 0;
+    const fadeInterval = setInterval(() => {
+      currentStep++;
+      const newVolume = Math.max(
+        startVolume - volumeStep * currentStep,
+        endVolume
+      );
+      track.audioElement.volume = newVolume * this.masterVolume;
+
+      if (currentStep >= steps) {
+        clearInterval(fadeInterval);
+        track.isFading = false;
+        this.fadeIntervals.delete(track.id);
+        this.stopBGM();
+      }
+    }, stepDuration);
+
+    this.fadeIntervals.set(track.id, fadeInterval);
+  }
+
+  /**
+   * BGMミュート
+   */
+  muteBGM(): void {
+    this.bgmMuted = true;
     for (const track of this.bgmTracks.values()) {
-      track.audioElement.volume =
-        track.volume * this.bgmVolume * this.masterVolume;
+      track.audioElement.volume = 0;
     }
   }
 
   /**
-   * 効果音音量の更新
+   * BGMミュート解除
    */
-  private updateSEVolume(): void {
+  unmuteBGM(): void {
+    this.bgmMuted = false;
+    for (const track of this.bgmTracks.values()) {
+      track.audioElement.volume = track.volume * this.masterVolume;
+    }
+  }
+
+  /**
+   * 効果音ミュート
+   */
+  muteSE(): void {
+    this.seMuted = true;
     for (const track of this.seTracks.values()) {
-      track.audioElement.volume =
-        track.volume * this.seVolume * this.masterVolume;
+      track.audioElement.volume = 0;
     }
   }
 
   /**
-   * ボイス音量の更新
+   * 効果音ミュート解除
    */
-  private updateVoiceVolume(): void {
+  unmuteSE(): void {
+    this.seMuted = false;
+    for (const track of this.seTracks.values()) {
+      track.audioElement.volume = track.volume * this.masterVolume;
+    }
+  }
+
+  /**
+   * ボイスミュート
+   */
+  muteVoice(): void {
+    this.voiceMuted = true;
     for (const track of this.voiceTracks.values()) {
-      track.audioElement.volume =
-        track.volume * this.voiceVolume * this.masterVolume;
+      track.audioElement.volume = 0;
     }
   }
 
   /**
-   * 音量設定の取得
+   * ボイスミュート解除
    */
-  getVolumeSettings(): {
-    master: number;
-    bgm: number;
-    se: number;
-    voice: number;
-  } {
-    console.log("Getting volume settings for screen:", {
-      screenWidth: this.config.screenWidth,
-      screenHeight: this.config.screenHeight,
-    });
-    return {
-      master: this.masterVolume,
-      bgm: this.bgmVolume,
-      se: this.seVolume,
-      voice: this.voiceVolume,
-    };
+  unmuteVoice(): void {
+    this.voiceMuted = false;
+    for (const track of this.voiceTracks.values()) {
+      track.audioElement.volume = track.volume * this.masterVolume;
+    }
   }
 
-  /**
-   * 現在のBGM情報を取得
-   */
-  getCurrentBGM(): string | null {
-    return this.currentBGM ? this.currentBGM.filePath : null;
+  // 状態確認メソッド
+  isBGMLoaded(id: string): boolean {
+    return this.bgmTracks.has(id);
   }
 
-  /**
-   * BGMが再生中かどうかを確認
-   */
+  isSELoaded(id: string): boolean {
+    return this.seTracks.has(id);
+  }
+
+  isVoiceLoaded(id: string): boolean {
+    return this.voiceTracks.has(id);
+  }
+
   isBGMPlaying(): boolean {
-    return this.currentBGM ? this.currentBGM.isPlaying : false;
+    return this.currentBGM ? !this.currentBGM.audioElement.paused : false;
+  }
+
+  isBGMMuted(): boolean {
+    return this.bgmMuted;
+  }
+
+  isSEMuted(): boolean {
+    return this.seMuted;
+  }
+
+  isVoiceMuted(): boolean {
+    return this.voiceMuted;
+  }
+
+  getCurrentBGMVolume(): number {
+    return this.bgmVolume;
+  }
+
+  getCurrentSEVolume(): number {
+    return this.seVolume;
+  }
+
+  getCurrentVoiceVolume(): number {
+    return this.voiceVolume;
   }
 
   /**
-   * 全音声の一時停止
+   * 効果音を停止
    */
-  pauseAll(): void {
-    // BGMの一時停止
-    if (this.currentBGM?.isPlaying) {
-      this.currentBGM.audioElement.pause();
-      this.currentBGM.isPaused = true;
-    }
-
-    // 効果音の一時停止
+  async stopSE(): Promise<void> {
     for (const track of this.seTracks.values()) {
-      if (track.isPlaying) {
-        track.audioElement.pause();
-        track.isPaused = true;
-      }
+      track.audioElement.pause();
+      track.audioElement.currentTime = 0;
+      track.isPlaying = false;
+      track.isPaused = false;
     }
-
-    // ボイスの一時停止
-    for (const track of this.voiceTracks.values()) {
-      if (track.isPlaying) {
-        track.audioElement.pause();
-        track.isPaused = true;
-      }
-    }
-
-    console.log("All audio paused");
   }
 
   /**
-   * 全音声の再開
+   * マスター音量を設定
    */
-  resumeAll(): void {
-    // BGMの再開
-    if (this.currentBGM?.isPaused) {
-      this.currentBGM.audioElement.play();
-      this.currentBGM.isPaused = false;
-    }
+  async setMasterVolume(volume: number): Promise<void> {
+    this.masterVolume = Math.max(0, Math.min(1, volume));
 
-    // 効果音の再開
+    // 全トラックの音量を更新
+    for (const track of this.bgmTracks.values()) {
+      if (!this.bgmMuted) {
+        track.audioElement.volume = track.volume * this.masterVolume;
+      }
+    }
     for (const track of this.seTracks.values()) {
-      if (track.isPaused) {
-        track.audioElement.play();
-        track.isPaused = false;
+      if (!this.seMuted) {
+        track.audioElement.volume = track.volume * this.masterVolume;
       }
     }
-
-    // ボイスの再開
     for (const track of this.voiceTracks.values()) {
-      if (track.isPaused) {
-        track.audioElement.play();
-        track.isPaused = false;
+      if (!this.voiceMuted) {
+        track.audioElement.volume = track.volume * this.masterVolume;
       }
     }
-
-    console.log("All audio resumed");
   }
 
   /**
-   * システムのリセット
+   * BGMフェード（汎用）
    */
-  reset(): void {
-    this.stopBGM();
-    this.stopSE();
-    this.stopAllVoices();
-    console.log("AudioSystem reset");
-  }
-
-  /**
-   * システムの終了処理
-   */
-  dispose(): void {
-    this.reset();
-    if (this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
+  async fadeBGM(duration: number, targetVolume: number): Promise<void> {
+    if (targetVolume === 0) {
+      this.fadeOutBGM(duration);
+    } else {
+      this.fadeInBGM(duration);
     }
-    console.log("AudioSystem disposed");
+  }
+
+  /**
+   * 破棄処理
+   */
+  async destroy(): Promise<void> {
+    if (!this.isInitialized) {
+      return;
+    }
+
+    // フェードインターバルをクリア
+    for (const interval of this.fadeIntervals.values()) {
+      clearInterval(interval);
+    }
+    this.fadeIntervals.clear();
+
+    // 全音声を停止
+    await this.stopBGM();
+    await this.stopVoice();
+
+    // トラックをクリア
+    this.bgmTracks.clear();
+    this.seTracks.clear();
+    this.voiceTracks.clear();
+
+    // AudioContextを閉じる
+    if (this.audioContext && this.audioContext.state !== "closed") {
+      try {
+        await this.audioContext.close();
+      } catch (_error) {
+        // テスト環境などでclose()がない場合のエラーハンドリング
+        console.warn("AudioContext.close() not available");
+      }
+    }
+    this.audioContext = null;
+
+    this.isInitialized = false;
+    console.log("AudioSystem destroyed");
   }
 }
