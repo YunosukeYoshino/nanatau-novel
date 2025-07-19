@@ -3,7 +3,7 @@
  */
 
 // TODO: Phase 5 - import PixiVN from "@drincs/pixi-vn";
-import type { SceneData, DialogueData, GameConfig } from "../types/core.js";
+import type { DialogueData, GameConfig, SceneData } from "../types/core.js";
 import type { ITextDisplaySystem } from "../types/interfaces.js";
 
 export interface TextDisplayOptions {

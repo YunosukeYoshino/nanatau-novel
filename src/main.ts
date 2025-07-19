@@ -1,5 +1,5 @@
-import { Application } from "pixi.js";
 import PixiVN from "@drincs/pixi-vn";
+import { Application } from "pixi.js";
 
 // アプリケーションの初期化
 const app = new Application({

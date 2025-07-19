@@ -2,9 +2,9 @@
  * GameStateManager のテスト
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { GameStateManager } from "../GameStateManager.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameState } from "../../types/core.js";
+import { GameStateManager } from "../GameStateManager.js";
 
 // LocalStorageのモック
 const localStorageMock = {

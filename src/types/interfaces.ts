@@ -3,15 +3,15 @@
  */
 
 import type {
+  ChoiceData,
+  DialogueData,
+  DirectiveData,
+  GameConfig,
+  GameState,
+  MenuType,
+  SaveSlotInfo,
   ScenarioData,
   SceneData,
-  ChoiceData,
-  GameState,
-  SaveSlotInfo,
-  DirectiveData,
-  DialogueData,
-  MenuType,
-  GameConfig,
 } from "./core.js";
 
 // ストーリーエンジンインターフェース

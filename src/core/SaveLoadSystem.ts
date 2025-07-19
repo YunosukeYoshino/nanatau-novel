@@ -2,7 +2,7 @@
  * セーブ・ロードシステム - ゲーム状態の永続化と復元
  */
 
-import type { GameState, SaveSlotInfo, GameConfig } from "../types/core.js";
+import type { GameConfig, GameState, SaveSlotInfo } from "../types/core.js";
 import type { ISaveSystem, SceneInfo } from "../types/interfaces.js";
 
 export interface SaveData {

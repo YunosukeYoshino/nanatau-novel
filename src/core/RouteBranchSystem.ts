@@ -8,8 +8,8 @@ import type {
   RouteDefinition,
 } from "../types/core.js";
 import type {
-  IRouteBranchSystem,
   BranchPointInfo,
+  IRouteBranchSystem,
   RouteInfo,
 } from "../types/interfaces.js";
 

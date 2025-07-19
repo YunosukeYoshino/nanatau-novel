@@ -2,7 +2,7 @@
  * ScenarioParser のテスト
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ScenarioParser } from "../ScenarioParser.js";
 
 describe("ScenarioParser", () => {

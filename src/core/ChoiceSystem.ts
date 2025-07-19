@@ -4,9 +4,9 @@
 
 import type {
   ChoiceData,
+  ChoiceHistory,
   GameState,
   RouteCondition,
-  ChoiceHistory,
 } from "../types/core.js";
 
 export interface ChoiceSystemConfig {
