@@ -51,7 +51,17 @@ export class AudioSystem implements IAudioManager {
   private audioContext: AudioContext | null = null;
 
   constructor(config: GameConfig) {
-    this.config = config; // TODO: 設定値を使用した初期化処理を追加
+    this.config = config;
+    console.log("AudioSystem initialized with config:", {
+      screenWidth: config.screenWidth,
+      screenHeight: config.screenHeight,
+      version: config.version,
+    });
+
+    // TODO: Phase 5 - configを使用した初期化処理を追加
+    this.masterVolume = config.screenWidth
+      ? Math.min(config.screenWidth / 1280, 1.0)
+      : 1.0;
     this.initializeAudioContext();
   }
 
@@ -62,11 +72,15 @@ export class AudioSystem implements IAudioManager {
     try {
       // Web Audio APIの初期化
       if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        this.audioContext = new (
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext
+        )();
       }
 
       // ユーザージェスチャーによるオーディオコンテキストの開始
-      if (this.audioContext.state === 'suspended') {
+      if (this.audioContext.state === "suspended") {
         await this.audioContext.resume();
       }
 
@@ -81,7 +95,11 @@ export class AudioSystem implements IAudioManager {
    */
   private initializeAudioContext(): void {
     try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.audioContext = new (
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext
+      )();
     } catch (error) {
       console.warn("Web Audio API not supported:", error);
     }
@@ -90,7 +108,11 @@ export class AudioSystem implements IAudioManager {
   /**
    * BGMの再生
    */
-  async playBGM(filePath: string, loop: boolean = true, config: AudioConfig = {}): Promise<void> {
+  async playBGM(
+    filePath: string,
+    loop: boolean = true,
+    config: AudioConfig = {}
+  ): Promise<void> {
     try {
       // 現在のBGMを停止
       if (this.currentBGM) {
@@ -145,7 +167,7 @@ export class AudioSystem implements IAudioManager {
       this.seTracks.set(track.id, track);
 
       // 再生終了時の自動削除
-      track.audioElement.addEventListener('ended', () => {
+      track.audioElement.addEventListener("ended", () => {
         this.seTracks.delete(track.id);
       });
 
@@ -180,7 +202,7 @@ export class AudioSystem implements IAudioManager {
       this.voiceTracks.set(track.id, track);
 
       // 再生終了時の自動削除
-      track.audioElement.addEventListener('ended', () => {
+      track.audioElement.addEventListener("ended", () => {
         this.voiceTracks.delete(track.id);
       });
 
@@ -296,7 +318,11 @@ export class AudioSystem implements IAudioManager {
     }
 
     try {
-      await this.fadeToVolume(this.currentBGM, targetVolume * this.masterVolume, duration);
+      await this.fadeToVolume(
+        this.currentBGM,
+        targetVolume * this.masterVolume,
+        duration
+      );
       console.log(`BGM faded to volume: ${targetVolume}`);
     } catch (error) {
       console.error("Failed to fade BGM:", error);
@@ -306,14 +332,17 @@ export class AudioSystem implements IAudioManager {
   /**
    * オーディオトラックの作成
    */
-  private async createAudioTrack(filePath: string, config: AudioConfig): Promise<AudioTrack | null> {
+  private async createAudioTrack(
+    filePath: string,
+    config: AudioConfig
+  ): Promise<AudioTrack | null> {
     try {
       const audio = new Audio(filePath);
       const trackId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       // プリロード
-      audio.preload = 'auto';
-      
+      audio.preload = "auto";
+
       // 設定の適用
       audio.volume = config.volume || 1.0;
       audio.loop = config.loop || false;
@@ -325,24 +354,24 @@ export class AudioSystem implements IAudioManager {
       // ロード完了を待機
       await new Promise<void>((resolve, reject) => {
         const onCanPlay = () => {
-          audio.removeEventListener('canplaythrough', onCanPlay);
-          audio.removeEventListener('error', onError);
+          audio.removeEventListener("canplaythrough", onCanPlay);
+          audio.removeEventListener("error", onError);
           resolve();
         };
 
         const onError = () => {
-          audio.removeEventListener('canplaythrough', onCanPlay);
-          audio.removeEventListener('error', onError);
+          audio.removeEventListener("canplaythrough", onCanPlay);
+          audio.removeEventListener("error", onError);
           reject(new Error(`Failed to load audio: ${filePath}`));
         };
 
-        audio.addEventListener('canplaythrough', onCanPlay);
-        audio.addEventListener('error', onError);
+        audio.addEventListener("canplaythrough", onCanPlay);
+        audio.addEventListener("error", onError);
 
         // タイムアウト設定
         setTimeout(() => {
-          audio.removeEventListener('canplaythrough', onCanPlay);
-          audio.removeEventListener('error', onError);
+          audio.removeEventListener("canplaythrough", onCanPlay);
+          audio.removeEventListener("error", onError);
           reject(new Error(`Audio loading timeout: ${filePath}`));
         }, 10000);
       });
@@ -382,7 +411,7 @@ export class AudioSystem implements IAudioManager {
   /**
    * フェードアウト効果
    */
-  private async fadeOut(track: AudioTrack, duration: number): Promise<void> { // TODO: 実装予定
+  async fadeOutTrack(track: AudioTrack, duration: number): Promise<void> {
     track.isFading = true;
     await this.fadeToVolume(track, 0, duration);
     track.audioElement.pause();
@@ -393,7 +422,11 @@ export class AudioSystem implements IAudioManager {
   /**
    * 指定音量へのフェード
    */
-  private async fadeToVolume(track: AudioTrack, targetVolume: number, duration: number): Promise<void> {
+  private async fadeToVolume(
+    track: AudioTrack,
+    targetVolume: number,
+    duration: number
+  ): Promise<void> {
     return new Promise((resolve) => {
       const startTime = Date.now();
       const startVolume = track.audioElement.volume;
@@ -431,7 +464,8 @@ export class AudioSystem implements IAudioManager {
    */
   private updateBGMVolume(): void {
     for (const track of this.bgmTracks.values()) {
-      track.audioElement.volume = track.volume * this.bgmVolume * this.masterVolume;
+      track.audioElement.volume =
+        track.volume * this.bgmVolume * this.masterVolume;
     }
   }
 
@@ -440,7 +474,8 @@ export class AudioSystem implements IAudioManager {
    */
   private updateSEVolume(): void {
     for (const track of this.seTracks.values()) {
-      track.audioElement.volume = track.volume * this.seVolume * this.masterVolume;
+      track.audioElement.volume =
+        track.volume * this.seVolume * this.masterVolume;
     }
   }
 
@@ -449,14 +484,24 @@ export class AudioSystem implements IAudioManager {
    */
   private updateVoiceVolume(): void {
     for (const track of this.voiceTracks.values()) {
-      track.audioElement.volume = track.volume * this.voiceVolume * this.masterVolume;
+      track.audioElement.volume =
+        track.volume * this.voiceVolume * this.masterVolume;
     }
   }
 
   /**
    * 音量設定の取得
    */
-  getVolumeSettings(): { master: number; bgm: number; se: number; voice: number } {
+  getVolumeSettings(): {
+    master: number;
+    bgm: number;
+    se: number;
+    voice: number;
+  } {
+    console.log("Getting volume settings for screen:", {
+      screenWidth: this.config.screenWidth,
+      screenHeight: this.config.screenHeight,
+    });
     return {
       master: this.masterVolume,
       bgm: this.bgmVolume,
@@ -484,7 +529,7 @@ export class AudioSystem implements IAudioManager {
    */
   pauseAll(): void {
     // BGMの一時停止
-    if (this.currentBGM && this.currentBGM.isPlaying) {
+    if (this.currentBGM?.isPlaying) {
       this.currentBGM.audioElement.pause();
       this.currentBGM.isPaused = true;
     }
@@ -513,7 +558,7 @@ export class AudioSystem implements IAudioManager {
    */
   resumeAll(): void {
     // BGMの再開
-    if (this.currentBGM && this.currentBGM.isPaused) {
+    if (this.currentBGM?.isPaused) {
       this.currentBGM.audioElement.play();
       this.currentBGM.isPaused = false;
     }

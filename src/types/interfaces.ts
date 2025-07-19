@@ -166,7 +166,11 @@ export interface ICharacterDisplaySystem {
   initialize(): Promise<void>;
 
   // キャラクターの表示
-  showCharacter(characterId: string, expression?: string, position?: string): Promise<void>;
+  showCharacter(
+    characterId: string,
+    expression?: string,
+    position?: string
+  ): Promise<void>;
 
   // キャラクターの非表示
   hideCharacter(characterId: string): Promise<void>;
@@ -226,7 +230,11 @@ export interface IChoiceUISystem {
   initialize(): Promise<void>;
 
   // 選択肢の表示
-  showChoices(choices: ChoiceData[], gameState: GameState, onChoiceSelected: (choice: ChoiceData) => void): Promise<void>;
+  showChoices(
+    choices: ChoiceData[],
+    gameState: GameState,
+    onChoiceSelected: (choice: ChoiceData) => void
+  ): Promise<void>;
 
   // 選択肢の非表示
   hideChoices(): Promise<void>;
@@ -247,6 +255,27 @@ export interface IChoiceUISystem {
   dispose(): void;
 }
 
+// ルート条件インターフェース（core.tsのRouteConditionと統合）
+import type { RouteCondition } from "./core.js";
+
+// ルート分岐ポイント情報
+export interface BranchPointInfo {
+  routeId: string;
+  routeName: string;
+  description: string;
+  requiredConditions: RouteCondition[];
+}
+
+// ルート情報
+export interface RouteInfo {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  priority: number;
+  conditions: RouteCondition[];
+}
+
 // ルート分岐システムインターフェース
 export interface IRouteBranchSystem {
   // システムの初期化
@@ -262,10 +291,10 @@ export interface IRouteBranchSystem {
   selectBestRoute(gameState: GameState): string;
 
   // ルート分岐点の検出
-  detectBranchPoints(gameState: GameState): Array<any>;
+  detectBranchPoints(gameState: GameState): BranchPointInfo[];
 
   // 現在のルート情報取得
-  getCurrentRoute(): any;
+  getCurrentRoute(): RouteInfo | null;
 
   // ルート履歴の取得
   getRouteHistory(): string[];
@@ -290,4 +319,27 @@ export interface IConfigManager {
 
   // 設定の更新
   updateConfig(partialConfig: Partial<GameConfig>): void;
+}
+
+// スプライトオブジェクトインターフェース (Phase 5でPixi'VNスプライトと置き換え予定)
+export interface SpriteObject {
+  x: number;
+  y: number;
+  alpha: number;
+  scale: {
+    set: (value: number) => void;
+    x?: number;
+    y?: number;
+  };
+  imagePath?: string;
+  text?: string;
+  visible?: boolean;
+}
+
+// シーン情報インターフェース
+export interface SceneInfo {
+  scenarioPath: string;
+  sceneTitle: string;
+  characterName: string;
+  currentText: string;
 }

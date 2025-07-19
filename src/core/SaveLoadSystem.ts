@@ -3,7 +3,7 @@
  */
 
 import type { GameState, SaveSlotInfo, GameConfig } from "../types/core.js";
-import type { ISaveSystem } from "../types/interfaces.js";
+import type { ISaveSystem, SceneInfo } from "../types/interfaces.js";
 
 export interface SaveData {
   /** セーブデータバージョン */
@@ -51,7 +51,8 @@ export class SaveLoadSystem implements ISaveSystem {
   private config: SaveSystemConfig;
   private gameConfig: GameConfig;
   private autoSaveTimer: number | null = null;
-  private encryptionKey: string = "nanatau_novel_game";
+  // TODO: Phase 5 - 暗号化機能で使用予定
+  // private encryptionKey: string = "nanatau_novel_game";
 
   constructor(gameConfig: GameConfig, config?: Partial<SaveSystemConfig>) {
     this.gameConfig = gameConfig;
@@ -93,7 +94,7 @@ export class SaveLoadSystem implements ISaveSystem {
   private async initializeStorage(): Promise<void> {
     try {
       // ローカルストレージの利用可能性チェック
-      if (typeof localStorage === 'undefined') {
+      if (typeof localStorage === "undefined") {
         throw new Error("LocalStorage not available");
       }
 
@@ -117,7 +118,11 @@ export class SaveLoadSystem implements ISaveSystem {
   /**
    * ゲーム状態の保存
    */
-  async saveGame(slotId: string, gameState: GameState, sceneInfo?: any): Promise<void> {
+  async saveGame(
+    slotId: string,
+    gameState: GameState,
+    sceneInfo?: SceneInfo
+  ): Promise<void> {
     try {
       // スクリーンショットの取得
       let screenshot: string | undefined;
@@ -131,10 +136,20 @@ export class SaveLoadSystem implements ISaveSystem {
         saveId: slotId,
         timestamp: Date.now(),
         gameState: this.cloneGameState(gameState),
-        screenshot,
-        sceneInfo,
+        screenshot: screenshot || "",
         dataSize: 0,
       };
+
+      // sceneInfoがある場合のみ追加
+      if (sceneInfo) {
+        saveData.sceneInfo = {
+          scenarioPath: sceneInfo.scenarioPath,
+          sceneId: sceneInfo.sceneTitle, // Map sceneTitle to sceneId for compatibility
+          sceneTitle: sceneInfo.sceneTitle,
+          characterName: sceneInfo.characterName,
+          currentText: sceneInfo.currentText,
+        };
+      }
 
       // データサイズの計算
       const serializedData = JSON.stringify(saveData);
@@ -228,8 +243,11 @@ export class SaveLoadSystem implements ISaveSystem {
 
       // スロット情報の更新
       const slots = this.getSaveSlots();
-      const updatedSlots = slots.filter(slot => slot.id !== slotId);
-      localStorage.setItem(`${this.config.storageKey}_slots`, JSON.stringify(updatedSlots));
+      const updatedSlots = slots.filter((slot) => slot.id !== slotId);
+      localStorage.setItem(
+        `${this.config.storageKey}_slots`,
+        JSON.stringify(updatedSlots)
+      );
 
       console.log(`Save deleted: ${slotId}`);
     } catch (error) {
@@ -254,7 +272,7 @@ export class SaveLoadSystem implements ISaveSystem {
   /**
    * クイックセーブ
    */
-  async quickSave(gameState: GameState, sceneInfo?: any): Promise<void> {
+  async quickSave(gameState: GameState, sceneInfo?: SceneInfo): Promise<void> {
     if (!this.config.enableQuickSave) {
       throw new Error("Quick save is disabled");
     }
@@ -283,7 +301,7 @@ export class SaveLoadSystem implements ISaveSystem {
   /**
    * オートセーブ
    */
-  async autoSave(gameState: GameState, sceneInfo?: any): Promise<void> {
+  async autoSave(gameState: GameState, sceneInfo?: SceneInfo): Promise<void> {
     if (!this.config.enableAutoSave) {
       return;
     }
@@ -374,13 +392,18 @@ export class SaveLoadSystem implements ISaveSystem {
   /**
    * ゲーム状態の復元
    */
-  private restoreGameState(savedState: any): GameState {
+  private restoreGameState(savedState: Partial<GameState>): GameState {
     return {
-      ...savedState,
+      currentScenarioPath: savedState.currentScenarioPath || "",
+      currentSceneIndex: savedState.currentSceneIndex || 0,
+      currentRouteId: savedState.currentRouteId || "main",
       variables: new Map(Object.entries(savedState.variables || {})),
       flags: new Map(Object.entries(savedState.flags || {})),
       visitedScenes: new Set(savedState.visitedScenes || []),
       choices: savedState.choices || [],
+      inventory: savedState.inventory || [],
+      playerName: savedState.playerName || "",
+      lastSaveTimestamp: savedState.lastSaveTimestamp || Date.now(),
     };
   }
 
@@ -389,9 +412,11 @@ export class SaveLoadSystem implements ISaveSystem {
    */
   private async updateSaveSlotInfo(saveData: SaveData): Promise<void> {
     const slots = this.getSaveSlots();
-    
+
     // 既存スロットの更新または新規追加
-    const existingIndex = slots.findIndex(slot => slot.id === saveData.saveId);
+    const existingIndex = slots.findIndex(
+      (slot) => slot.id === saveData.saveId
+    );
     const slotInfo: SaveSlotInfo = {
       id: saveData.saveId,
       timestamp: saveData.timestamp,
@@ -399,7 +424,7 @@ export class SaveLoadSystem implements ISaveSystem {
       sceneTitle: saveData.sceneInfo?.sceneTitle || "Unknown Scene",
       characterName: saveData.sceneInfo?.characterName || "",
       currentText: saveData.sceneInfo?.currentText || "",
-      screenshot: saveData.screenshot,
+      screenshot: saveData.screenshot || "",
       dataSize: saveData.dataSize || 0,
     };
 
@@ -413,16 +438,22 @@ export class SaveLoadSystem implements ISaveSystem {
     if (slots.length > this.config.maxSaveSlots) {
       const sortedSlots = slots.sort((a, b) => b.timestamp - a.timestamp);
       const keptSlots = sortedSlots.slice(0, this.config.maxSaveSlots);
-      
+
       // 削除されるスロットのデータも削除
       const removedSlots = sortedSlots.slice(this.config.maxSaveSlots);
       for (const slot of removedSlots) {
         localStorage.removeItem(`${this.config.storageKey}_${slot.id}`);
       }
-      
-      localStorage.setItem(`${this.config.storageKey}_slots`, JSON.stringify(keptSlots));
+
+      localStorage.setItem(
+        `${this.config.storageKey}_slots`,
+        JSON.stringify(keptSlots)
+      );
     } else {
-      localStorage.setItem(`${this.config.storageKey}_slots`, JSON.stringify(slots));
+      localStorage.setItem(
+        `${this.config.storageKey}_slots`,
+        JSON.stringify(slots)
+      );
     }
   }
 
@@ -430,7 +461,8 @@ export class SaveLoadSystem implements ISaveSystem {
    * バージョン互換性チェック
    */
   private isCompatibleVersion(saveVersion: string): boolean {
-    // TODO: セーブデータバージョンの互換性チェック
+    // TODO: Phase 5 - セーブデータバージョンの互換性チェック
+    console.log(`Checking compatibility for save version: ${saveVersion}`);
     return true;
   }
 
@@ -474,7 +506,7 @@ export class SaveLoadSystem implements ISaveSystem {
       let totalSize = 0;
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith(this.config.storageKey)) {
+        if (key?.startsWith(this.config.storageKey)) {
           const value = localStorage.getItem(key) || "";
           totalSize += new Blob([value]).size;
         }
@@ -522,7 +554,7 @@ export class SaveLoadSystem implements ISaveSystem {
     try {
       // Base64デコード
       const data = decodeURIComponent(escape(atob(exportData)));
-      
+
       // データの妥当性チェック
       const saveData = JSON.parse(data);
       if (!saveData.version || !saveData.gameState) {
@@ -531,7 +563,7 @@ export class SaveLoadSystem implements ISaveSystem {
 
       // ストレージに保存
       await this.writeToStorage(slotId, data);
-      
+
       // スロット情報の更新
       await this.updateSaveSlotInfo(saveData);
 
@@ -547,7 +579,7 @@ export class SaveLoadSystem implements ISaveSystem {
    */
   updateConfig(newConfig: Partial<SaveSystemConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    
+
     // オートセーブ設定の更新
     if (this.config.enableAutoSave) {
       this.startAutoSave();

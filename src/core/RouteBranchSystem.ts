@@ -2,13 +2,16 @@
  * ルート分岐システム - ストーリールートの管理と分岐処理
  */
 
-import type { 
-  GameState, 
-  RouteCondition, 
-  ScenarioData,
-  RouteDefinition 
+import type {
+  GameState,
+  RouteCondition,
+  RouteDefinition,
 } from "../types/core.js";
-import type { IRouteBranchSystem } from "../types/interfaces.js";
+import type {
+  IRouteBranchSystem,
+  BranchPointInfo,
+  RouteInfo,
+} from "../types/interfaces.js";
 
 export interface RouteNode {
   /** ルートID */
@@ -65,7 +68,8 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   private routeGraph: RouteGraph;
   private routeTransitions: Map<string, RouteTransition[]> = new Map();
   private routeDefinitions: Map<string, RouteDefinition> = new Map();
-  private currentGameState: GameState | null = null;
+  // TODO: Phase 5 - ゲーム状態の管理に使用予定
+  // private currentGameState: GameState | null = null;
 
   constructor() {
     this.routeGraph = {
@@ -74,7 +78,7 @@ export class RouteBranchSystem implements IRouteBranchSystem {
       currentRoute: "main",
       routeHistory: ["main"],
     };
-    
+
     this.initializeDefaultRoutes();
   }
 
@@ -116,7 +120,10 @@ export class RouteBranchSystem implements IRouteBranchSystem {
       const parentNode = this.routeGraph.nodes.get(routeNode.parentRoute);
       if (parentNode) {
         parentNode.childRoutes.push(routeNode.id);
-        this.routeGraph.connections.set(routeNode.parentRoute, parentNode.childRoutes);
+        this.routeGraph.connections.set(
+          routeNode.parentRoute,
+          parentNode.childRoutes
+        );
       }
     }
 
@@ -138,9 +145,12 @@ export class RouteBranchSystem implements IRouteBranchSystem {
       const parentNode = this.routeGraph.nodes.get(routeNode.parentRoute);
       if (parentNode) {
         parentNode.childRoutes = parentNode.childRoutes
-          .filter(id => id !== routeId)
+          .filter((id) => id !== routeId)
           .concat(routeNode.childRoutes);
-        this.routeGraph.connections.set(routeNode.parentRoute, parentNode.childRoutes);
+        this.routeGraph.connections.set(
+          routeNode.parentRoute,
+          parentNode.childRoutes
+        );
       }
     }
 
@@ -159,20 +169,23 @@ export class RouteBranchSystem implements IRouteBranchSystem {
     transitions.push(transition);
     this.routeTransitions.set(transition.fromRoute, transitions);
 
-    console.log(`Route transition added: ${transition.fromRoute} -> ${transition.toRoute}`);
+    console.log(
+      `Route transition added: ${transition.fromRoute} -> ${transition.toRoute}`
+    );
   }
 
   /**
    * 利用可能なルートの評価
    */
   evaluateAvailableRoutes(gameState: GameState): string[] {
-    this.currentGameState = gameState;
+    // TODO: Phase 5 - this.currentGameState = gameState;
     const currentRoute = gameState.currentRouteId || "main";
+    console.log(`Evaluating routes from current route: ${currentRoute}`);
     const availableRoutes: string[] = [];
 
     // 現在のルートから遷移可能なルートを確認
     const transitions = this.routeTransitions.get(currentRoute) || [];
-    
+
     for (const transition of transitions) {
       if (this.evaluateRouteConditions(transition.conditions, gameState)) {
         const targetRoute = this.routeGraph.nodes.get(transition.toRoute);
@@ -212,12 +225,15 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   /**
    * ルート条件の評価
    */
-  private evaluateRouteConditions(conditions: RouteCondition[], gameState: GameState): boolean {
+  private evaluateRouteConditions(
+    conditions: RouteCondition[],
+    gameState: GameState
+  ): boolean {
     if (conditions.length === 0) {
       return true;
     }
 
-    return conditions.every(condition => {
+    return conditions.every((condition) => {
       switch (condition.type) {
         case "flag":
           return this.evaluateFlagCondition(condition, gameState);
@@ -239,9 +255,12 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   /**
    * フラグ条件の評価
    */
-  private evaluateFlagCondition(condition: RouteCondition, gameState: GameState): boolean {
+  private evaluateFlagCondition(
+    condition: RouteCondition,
+    gameState: GameState
+  ): boolean {
     const flagValue = gameState.flags.get(condition.key) ?? false;
-    
+
     switch (condition.operator) {
       case "equals":
         return flagValue === condition.value;
@@ -255,30 +274,41 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   /**
    * 変数条件の評価
    */
-  private evaluateVariableCondition(condition: RouteCondition, gameState: GameState): boolean {
+  private evaluateVariableCondition(
+    condition: RouteCondition,
+    gameState: GameState
+  ): boolean {
     const variableValue = gameState.variables.get(condition.key);
-    
+
     switch (condition.operator) {
       case "equals":
         return variableValue === condition.value;
       case "not_equals":
         return variableValue !== condition.value;
       case "greater_than":
-        return typeof variableValue === "number" && 
-               typeof condition.value === "number" && 
-               variableValue > condition.value;
+        return (
+          typeof variableValue === "number" &&
+          typeof condition.value === "number" &&
+          variableValue > condition.value
+        );
       case "less_than":
-        return typeof variableValue === "number" && 
-               typeof condition.value === "number" && 
-               variableValue < condition.value;
+        return (
+          typeof variableValue === "number" &&
+          typeof condition.value === "number" &&
+          variableValue < condition.value
+        );
       case "greater_equal":
-        return typeof variableValue === "number" && 
-               typeof condition.value === "number" && 
-               variableValue >= condition.value;
+        return (
+          typeof variableValue === "number" &&
+          typeof condition.value === "number" &&
+          variableValue >= condition.value
+        );
       case "less_equal":
-        return typeof variableValue === "number" && 
-               typeof condition.value === "number" && 
-               variableValue <= condition.value;
+        return (
+          typeof variableValue === "number" &&
+          typeof condition.value === "number" &&
+          variableValue <= condition.value
+        );
       default:
         return false;
     }
@@ -287,9 +317,14 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   /**
    * 選択履歴条件の評価
    */
-  private evaluateChoiceHistoryCondition(condition: RouteCondition, gameState: GameState): boolean {
-    const hasChoice = gameState.choices.some(choice => choice.choiceId === condition.value);
-    
+  private evaluateChoiceHistoryCondition(
+    condition: RouteCondition,
+    gameState: GameState
+  ): boolean {
+    const hasChoice = gameState.choices.some(
+      (choice) => choice.choiceId === condition.value
+    );
+
     switch (condition.operator) {
       case "equals":
         return hasChoice;
@@ -303,9 +338,16 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   /**
    * ルート履歴条件の評価
    */
-  private evaluateRouteHistoryCondition(condition: RouteCondition, gameState: GameState): boolean {
-    const hasVisitedRoute = this.routeGraph.routeHistory.includes(condition.value as string);
-    
+  private evaluateRouteHistoryCondition(
+    condition: RouteCondition,
+    gameState: GameState
+  ): boolean {
+    // TODO: Phase 5 - gameStateからのルート履歴情報も参照予定
+    console.log("Evaluating route history for:", gameState.currentRouteId);
+    const hasVisitedRoute = this.routeGraph.routeHistory.includes(
+      condition.value as string
+    );
+
     switch (condition.operator) {
       case "equals":
         return hasVisitedRoute;
@@ -319,9 +361,14 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   /**
    * シーン訪問条件の評価
    */
-  private evaluateSceneVisitedCondition(condition: RouteCondition, gameState: GameState): boolean {
-    const hasVisitedScene = gameState.visitedScenes.has(condition.value as string);
-    
+  private evaluateSceneVisitedCondition(
+    condition: RouteCondition,
+    gameState: GameState
+  ): boolean {
+    const hasVisitedScene = gameState.visitedScenes.has(
+      condition.value as string
+    );
+
     switch (condition.operator) {
       case "equals":
         return hasVisitedScene;
@@ -335,7 +382,10 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   /**
    * ルートの切り替え
    */
-  async switchToRoute(routeId: string, gameState: GameState): Promise<GameState> {
+  async switchToRoute(
+    routeId: string,
+    gameState: GameState
+  ): Promise<GameState> {
     const targetRoute = this.routeGraph.nodes.get(routeId);
     if (!targetRoute) {
       throw new Error(`Route not found: ${routeId}`);
@@ -375,15 +425,21 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   /**
    * ルート遷移の検索
    */
-  private findTransition(fromRoute: string, toRoute: string): RouteTransition | undefined {
+  private findTransition(
+    fromRoute: string,
+    toRoute: string
+  ): RouteTransition | undefined {
     const transitions = this.routeTransitions.get(fromRoute) || [];
-    return transitions.find(t => t.toRoute === toRoute);
+    return transitions.find((t) => t.toRoute === toRoute);
   }
 
   /**
    * 遷移アクションの実行
    */
-  private executeTransitionActions(actions: NonNullable<RouteTransition['actions']>, gameState: GameState): void {
+  private executeTransitionActions(
+    actions: NonNullable<RouteTransition["actions"]>,
+    gameState: GameState
+  ): void {
     // フラグの設定
     if (actions.setFlags) {
       for (const [flag, value] of Object.entries(actions.setFlags)) {
@@ -409,13 +465,13 @@ export class RouteBranchSystem implements IRouteBranchSystem {
    */
   selectBestRoute(gameState: GameState): string {
     const availableRoutes = this.evaluateAvailableRoutes(gameState);
-    
+
     if (availableRoutes.length === 0) {
       return gameState.currentRouteId;
     }
 
     // 優先度が最も高いルートを選択
-    let bestRoute = availableRoutes[0];
+    let bestRoute: string = availableRoutes[0] || gameState.currentRouteId;
     let highestPriority = -1;
 
     for (const routeId of availableRoutes) {
@@ -432,19 +488,9 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   /**
    * ルート分岐点の検出
    */
-  detectBranchPoints(gameState: GameState): Array<{
-    routeId: string;
-    routeName: string;
-    description?: string;
-    requiredConditions: RouteCondition[];
-  }> {
+  detectBranchPoints(gameState: GameState): BranchPointInfo[] {
     const availableRoutes = this.evaluateAvailableRoutes(gameState);
-    const branchPoints: Array<{
-      routeId: string;
-      routeName: string;
-      description?: string;
-      requiredConditions: RouteCondition[];
-    }> = [];
+    const branchPoints: BranchPointInfo[] = [];
 
     for (const routeId of availableRoutes) {
       const route = this.routeGraph.nodes.get(routeId);
@@ -452,7 +498,7 @@ export class RouteBranchSystem implements IRouteBranchSystem {
         branchPoints.push({
           routeId: route.id,
           routeName: route.name,
-          description: route.description,
+          description: route.description ?? "No description available",
           requiredConditions: route.conditions,
         });
       }
@@ -468,8 +514,17 @@ export class RouteBranchSystem implements IRouteBranchSystem {
     nodes: Array<{ id: string; name: string; type: string; visited: boolean }>;
     edges: Array<{ from: string; to: string; conditions: RouteCondition[] }>;
   } {
-    const nodes: Array<{ id: string; name: string; type: string; visited: boolean }> = [];
-    const edges: Array<{ from: string; to: string; conditions: RouteCondition[] }> = [];
+    const nodes: Array<{
+      id: string;
+      name: string;
+      type: string;
+      visited: boolean;
+    }> = [];
+    const edges: Array<{
+      from: string;
+      to: string;
+      conditions: RouteCondition[];
+    }> = [];
 
     // ノードの収集
     for (const route of this.routeGraph.nodes.values()) {
@@ -506,23 +561,39 @@ export class RouteBranchSystem implements IRouteBranchSystem {
     completionPercentage: number;
   } {
     const totalRoutes = this.routeGraph.nodes.size;
-    const visitedRoutes = Array.from(this.routeGraph.nodes.values())
-      .filter(route => route.visited).length;
-    
+    const visitedRoutes = Array.from(this.routeGraph.nodes.values()).filter(
+      (route) => route.visited
+    ).length;
+
     return {
       totalRoutes,
       visitedRoutes,
       currentRoute: this.routeGraph.currentRoute,
       routeHistory: [...this.routeGraph.routeHistory],
-      completionPercentage: totalRoutes > 0 ? (visitedRoutes / totalRoutes) * 100 : 0,
+      completionPercentage:
+        totalRoutes > 0 ? (visitedRoutes / totalRoutes) * 100 : 0,
     };
   }
 
   /**
    * 現在のルート情報取得
    */
-  getCurrentRoute(): RouteNode | null {
-    return this.routeGraph.nodes.get(this.routeGraph.currentRoute) || null;
+  getCurrentRoute(): RouteInfo | null {
+    const currentRoute = this.routeGraph.nodes.get(
+      this.routeGraph.currentRoute
+    );
+    if (!currentRoute) {
+      return null;
+    }
+
+    return {
+      id: currentRoute.id,
+      name: currentRoute.name,
+      description: currentRoute.description ?? "No description available",
+      isActive: true,
+      priority: currentRoute.priority,
+      conditions: currentRoute.conditions,
+    };
   }
 
   /**
@@ -546,7 +617,7 @@ export class RouteBranchSystem implements IRouteBranchSystem {
   reset(): void {
     this.routeGraph.currentRoute = "main";
     this.routeGraph.routeHistory = ["main"];
-    
+
     // 全ルートの訪問状態をリセット
     for (const route of this.routeGraph.nodes.values()) {
       route.visited = false;

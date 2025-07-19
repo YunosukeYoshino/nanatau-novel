@@ -2,9 +2,9 @@
  * 選択肢UI表示システム - 選択肢の表示と操作を管理
  */
 
-import PixiVN from "@drincs/pixi-vn";
+// TODO: Phase 5 - import PixiVN from "@drincs/pixi-vn";
 import type { ChoiceData, GameState } from "../types/core.js";
-import type { IChoiceUISystem } from "../types/interfaces.js";
+import type { IChoiceUISystem, SpriteObject } from "../types/interfaces.js";
 import { ChoiceSystem, type ChoiceSystemConfig } from "./ChoiceSystem.js";
 
 export interface ChoiceUIConfig {
@@ -43,7 +43,7 @@ export interface ChoiceUIConfig {
 
 export interface ChoiceButtonData {
   /** ボタンオブジェクト */
-  button: any; // Pixi.jsのボタンオブジェクト
+  button: SpriteObject; // Pixi.jsのボタンオブジェクト
   /** 選択肢データ */
   choice: ChoiceData;
   /** インデックス */
@@ -58,7 +58,7 @@ export class ChoiceUISystem implements IChoiceUISystem {
   private choiceButtons: ChoiceButtonData[] = [];
   private isChoicesVisible: boolean = false;
   private currentChoices: ChoiceData[] = [];
-  private choiceContainer: any = null; // Pixi.jsコンテナ
+  private choiceContainer: SpriteObject | null = null; // Pixi.jsコンテナ
   private autoSelectTimer: number | null = null;
   private onChoiceSelected?: (choice: ChoiceData) => void;
 
@@ -129,8 +129,11 @@ export class ChoiceUISystem implements IChoiceUISystem {
       await this.hideChoices();
 
       // 条件評価
-      const availableChoices = this.choiceSystem.evaluateChoiceConditions(choices, gameState);
-      
+      const availableChoices = this.choiceSystem.evaluateChoiceConditions(
+        choices,
+        gameState
+      );
+
       if (availableChoices.length === 0) {
         console.warn("No available choices after condition evaluation");
         return;
@@ -180,7 +183,7 @@ export class ChoiceUISystem implements IChoiceUISystem {
 
       this.isChoicesVisible = false;
       this.currentChoices = [];
-      this.onChoiceSelected = undefined;
+      this.onChoiceSelected = (() => {}) as (choice: ChoiceData) => void;
 
       console.log("Choices hidden");
     } catch (error) {
@@ -196,8 +199,10 @@ export class ChoiceUISystem implements IChoiceUISystem {
 
     for (let i = 0; i < choices.length; i++) {
       const choice = choices[i];
+      if (!choice) continue;
+
       const button = await this.createChoiceButton(choice, i);
-      
+
       if (button) {
         this.choiceButtons.push({
           button,
@@ -212,7 +217,10 @@ export class ChoiceUISystem implements IChoiceUISystem {
   /**
    * 個別の選択肢ボタンの作成
    */
-  private async createChoiceButton(choice: ChoiceData, index: number): Promise<any> {
+  private async createChoiceButton(
+    choice: ChoiceData,
+    _index: number
+  ): Promise<SpriteObject> {
     try {
       // TODO: Pixi.jsボタンの作成
       // const button = new PIXI.Graphics();
@@ -220,10 +228,27 @@ export class ChoiceUISystem implements IChoiceUISystem {
       // クリックイベントの設定
 
       console.log(`Choice button created: ${choice.text}`);
-      return {}; // 仮のオブジェクト
+
+      const button: SpriteObject = {
+        x: 0,
+        y: 0,
+        alpha: 1,
+        scale: { set: () => {} },
+        text: choice.text,
+        visible: true,
+      };
+
+      return button;
     } catch (error) {
       console.error(`Failed to create choice button: ${choice.text}`, error);
-      return null;
+      return {
+        x: 0,
+        y: 0,
+        alpha: 0,
+        scale: { set: () => {} },
+        text: choice.text || "Error",
+        visible: false,
+      };
     }
   }
 
@@ -235,7 +260,11 @@ export class ChoiceUISystem implements IChoiceUISystem {
       return;
     }
 
-    const layout = this.config.layout!;
+    const layout = this.config.layout;
+    if (!layout) {
+      console.warn("No layout configuration found");
+      return;
+    }
     const spacing = layout.spacing || 10;
     const maxWidth = layout.maxWidth || 800;
 
@@ -243,10 +272,16 @@ export class ChoiceUISystem implements IChoiceUISystem {
     let startY = 0;
     switch (layout.position) {
       case "bottom":
-        startY = (PixiVN.app?.screen.height || 720) - 150;
+        // TODO: Phase 5 - PixiVN.app?.screen.height
+        startY = 720 - 150;
         break;
       case "center":
-        startY = ((PixiVN.app?.screen.height || 720) / 2) - ((this.choiceButtons.length * 50 + (this.choiceButtons.length - 1) * spacing) / 2);
+        // TODO: Phase 5 - PixiVN.app?.screen.height
+        startY =
+          720 / 2 -
+          (this.choiceButtons.length * 50 +
+            (this.choiceButtons.length - 1) * spacing) /
+            2;
         break;
       case "custom":
         // カスタム位置は個別に設定
@@ -256,17 +291,26 @@ export class ChoiceUISystem implements IChoiceUISystem {
     // ボタンの配置
     this.choiceButtons.forEach((buttonData, index) => {
       const y = startY + index * (50 + spacing);
-      let x = 0;
+      console.log(
+        `Positioning button ${index} for choice: ${buttonData.choice.text} at y: ${y}`
+      );
+      // TODO: Phase 5 - ボタンの位置設定
+      // let x = 0;
 
       switch (layout.alignment) {
         case "left":
-          x = 50;
+          // TODO: Phase 5 - x = 50;
+          console.log("Left alignment position: 50");
           break;
         case "center":
-          x = ((PixiVN.app?.screen.width || 1280) - maxWidth) / 2;
+          // TODO: Phase 5 - PixiVN.app?.screen.width
+          // x = ((1280) - maxWidth) / 2;
+          console.log(`Center alignment position: ${(1280 - maxWidth) / 2}`);
           break;
         case "right":
-          x = (PixiVN.app?.screen.width || 1280) - maxWidth - 50;
+          // TODO: Phase 5 - PixiVN.app?.screen.width
+          // x = (1280) - maxWidth - 50;
+          console.log(`Right alignment position: ${(1280) - maxWidth - 50}`);
           break;
       }
 
@@ -280,26 +324,33 @@ export class ChoiceUISystem implements IChoiceUISystem {
    * アニメーション付き表示
    */
   private async showChoicesWithAnimation(): Promise<void> {
-    const animation = this.config.animation!;
-    
+    const animation = this.config.animation;
+    if (!animation) {
+      console.warn("No animation config found, showing choices immediately");
+      return;
+    }
+
     if (!animation.fadeIn && !animation.slideIn) {
       // アニメーションなしで即座に表示
-      this.choiceButtons.forEach(buttonData => {
-        // TODO: ボタンの表示
-        // buttonData.button.visible = true;
+      this.choiceButtons.forEach((_buttonData) => {
+        // TODO: Phase 5 - ボタンの表示
+        console.log(`Showing button immediately: ${_buttonData.choice.text}`);
+        // _buttonData.button.visible = true;
       });
       return;
     }
 
     // フェードイン・スライドインアニメーション
     const duration = animation.showDuration || 300;
-    
+
     for (let i = 0; i < this.choiceButtons.length; i++) {
       const buttonData = this.choiceButtons[i];
       const delay = i * 50; // 順次表示のための遅延
 
       setTimeout(async () => {
-        await this.animateButtonShow(buttonData.button, duration);
+        if (buttonData) {
+          await this.animateButtonShow(buttonData.button, duration);
+        }
       }, delay);
     }
   }
@@ -308,10 +359,14 @@ export class ChoiceUISystem implements IChoiceUISystem {
    * アニメーション付き非表示
    */
   private async hideChoicesWithAnimation(): Promise<void> {
-    const animation = this.config.animation!;
+    const animation = this.config.animation;
+    if (!animation) {
+      console.warn("No animation config found, hiding choices immediately");
+      return;
+    }
     const duration = animation.hideDuration || 200;
 
-    const hidePromises = this.choiceButtons.map(buttonData =>
+    const hidePromises = this.choiceButtons.map((buttonData) =>
       this.animateButtonHide(buttonData.button, duration)
     );
 
@@ -321,15 +376,26 @@ export class ChoiceUISystem implements IChoiceUISystem {
   /**
    * ボタン表示アニメーション
    */
-  private async animateButtonShow(button: any, duration: number): Promise<void> {
+  private async animateButtonShow(
+    button: SpriteObject,
+    duration: number
+  ): Promise<void> {
     return new Promise((resolve) => {
-      // TODO: Pixi.jsアニメーションの実装
+      // TODO: Phase 5 - Pixi.jsアニメーションの実装
+      console.log(`Animating button show:`, {
+        button: button.text || "unknown",
+        duration,
+      });
       // button.alpha = 0;
       // button.visible = true;
-      
+
       // アニメーション実行
       setTimeout(() => {
         // button.alpha = 1;
+        console.log(
+          `Button show animation completed for button:`,
+          button.text || "unknown"
+        );
         resolve();
       }, duration);
     });
@@ -338,11 +404,22 @@ export class ChoiceUISystem implements IChoiceUISystem {
   /**
    * ボタン非表示アニメーション
    */
-  private async animateButtonHide(button: any, duration: number): Promise<void> {
+  private async animateButtonHide(
+    button: SpriteObject,
+    duration: number
+  ): Promise<void> {
     return new Promise((resolve) => {
-      // TODO: Pixi.jsアニメーションの実装
+      // TODO: Phase 5 - Pixi.jsアニメーションの実装
+      console.log(`Animating button hide:`, {
+        button: button.text || "unknown",
+        duration,
+      });
       setTimeout(() => {
         // button.visible = false;
+        console.log(
+          `Button hide animation completed for button:`,
+          button.text || "unknown"
+        );
         resolve();
       }, duration);
     });
@@ -352,8 +429,9 @@ export class ChoiceUISystem implements IChoiceUISystem {
    * 選択肢ボタンの削除
    */
   private destroyChoiceButtons(): void {
-    this.choiceButtons.forEach(buttonData => {
-      // TODO: ボタンの削除処理
+    this.choiceButtons.forEach((buttonData) => {
+      // TODO: Phase 5 - ボタンの削除処理
+      console.log(`Destroying button for choice: ${buttonData.choice.text}`);
       // buttonData.button.destroy();
     });
     this.choiceButtons = [];
@@ -442,9 +520,15 @@ export class ChoiceUISystem implements IChoiceUISystem {
 
     // 数字キーでの選択
     const numberKey = parseInt(key);
-    if (!isNaN(numberKey) && numberKey >= 1 && numberKey <= this.currentChoices.length) {
+    if (
+      !Number.isNaN(numberKey) &&
+      numberKey >= 1 &&
+      numberKey <= this.currentChoices.length
+    ) {
       const choice = this.currentChoices[numberKey - 1];
-      this.onChoiceButtonClick(choice, numberKey - 1);
+      if (choice) {
+        this.onChoiceButtonClick(choice, numberKey - 1);
+      }
       return;
     }
 
@@ -458,7 +542,9 @@ export class ChoiceUISystem implements IChoiceUISystem {
         // デフォルト選択肢を選択
         if (this.currentChoices.length > 0) {
           const defaultChoice = this.currentChoices[0];
-          this.onChoiceButtonClick(defaultChoice, 0);
+          if (defaultChoice) {
+            this.onChoiceButtonClick(defaultChoice, 0);
+          }
         }
         break;
     }
@@ -474,6 +560,10 @@ export class ChoiceUISystem implements IChoiceUISystem {
     }
 
     const choice = this.currentChoices[choiceIndex];
+    if (!choice) {
+      console.warn(`Choice at index ${choiceIndex} is undefined`);
+      return null;
+    }
     return this.choiceSystem.executeChoice(choice, gameState, "current_scene");
   }
 

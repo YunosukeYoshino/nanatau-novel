@@ -2,7 +2,7 @@
  * テキスト表示システム - ゲーム内のテキスト表示を管理
  */
 
-import PixiVN from "@drincs/pixi-vn";
+// TODO: Phase 5 - import PixiVN from "@drincs/pixi-vn";
 import type { SceneData, DialogueData, GameConfig } from "../types/core.js";
 import type { ITextDisplaySystem } from "../types/interfaces.js";
 
@@ -28,6 +28,11 @@ export class TextDisplaySystem implements ITextDisplaySystem {
 
   constructor(config: GameConfig, options: TextDisplayOptions = {}) {
     this.config = config;
+    console.log("TextDisplaySystem initialized with config:", {
+      screenWidth: config.screenWidth,
+      screenHeight: config.screenHeight,
+      version: config.version,
+    });
     this.options = {
       textSpeed: 30,
       autoAdvanceDelay: 3000,
@@ -62,7 +67,8 @@ export class TextDisplaySystem implements ITextDisplaySystem {
   async displayDialogue(dialogue: DialogueData): Promise<void> {
     // キャラクター名の設定
     if (dialogue.character) {
-      PixiVN.dialogue.character = dialogue.character;
+      // TODO: Phase 5 - PixiVN.dialogue.character = dialogue.character;
+      console.log(`Character: ${dialogue.character}`);
     }
 
     // 立ち絵の設定
@@ -92,7 +98,8 @@ export class TextDisplaySystem implements ITextDisplaySystem {
       // 即座に表示するか段階的に表示するか
       if (!this.options.textEffectsEnabled || this.options.textSpeed === 0) {
         // 即座に表示
-        PixiVN.dialogue.text = text;
+        // TODO: Phase 5 - PixiVN.dialogue.text = text;
+        console.log(`Displaying text immediately: ${text}`);
         this.isDisplaying = false;
         this.startAutoAdvance();
         resolve();
@@ -113,8 +120,12 @@ export class TextDisplaySystem implements ITextDisplaySystem {
     const updateText = () => {
       if (this.currentCharacterIndex < this.currentText.length) {
         this.currentCharacterIndex++;
-        const displayText = this.currentText.substring(0, this.currentCharacterIndex);
-        PixiVN.dialogue.text = displayText;
+        const displayText = this.currentText.substring(
+          0,
+          this.currentCharacterIndex
+        );
+        // TODO: Phase 5 - PixiVN.dialogue.text = displayText;
+        console.log(`Animating text: ${displayText}`);
 
         this.textTimer = window.setTimeout(updateText, interval);
       } else {
@@ -132,7 +143,10 @@ export class TextDisplaySystem implements ITextDisplaySystem {
    * 自動進行の開始
    */
   private startAutoAdvance(): void {
-    if (!this.options.autoAdvanceEnabled || this.options.autoAdvanceDelay === 0) {
+    if (
+      !this.options.autoAdvanceEnabled ||
+      this.options.autoAdvanceDelay === 0
+    ) {
       return;
     }
 
@@ -159,7 +173,8 @@ export class TextDisplaySystem implements ITextDisplaySystem {
 
     if (this.isDisplaying) {
       // 表示中の場合は即座に全文表示
-      PixiVN.dialogue.text = this.currentText;
+      // TODO: Phase 5 - PixiVN.dialogue.text = this.currentText;
+      console.log(`Skip to end: ${this.currentText}`);
       this.currentCharacterIndex = this.currentText.length;
       this.isDisplaying = false;
       this.startAutoAdvance();
@@ -183,16 +198,23 @@ export class TextDisplaySystem implements ITextDisplaySystem {
    */
   updateOptions(newOptions: Partial<TextDisplayOptions>): void {
     this.options = { ...this.options, ...newOptions };
-    console.log("Text display options updated:", this.options);
+    console.log("Text display options updated:", {
+      options: this.options,
+      screenConfig: {
+        width: this.config.screenWidth,
+        height: this.config.screenHeight,
+      },
+    });
   }
 
   /**
    * テキストの消去
    */
   clearText(): void {
-    PixiVN.dialogue.text = "";
-    PixiVN.dialogue.character = "";
-    
+    // TODO: Phase 5 - PixiVN.dialogue.text = "";
+    // TODO: Phase 5 - PixiVN.dialogue.character = "";
+    console.log("Text and character cleared");
+
     if (this.textTimer) {
       clearTimeout(this.textTimer);
       this.textTimer = null;

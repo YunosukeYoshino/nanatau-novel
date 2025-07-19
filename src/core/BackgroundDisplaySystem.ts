@@ -2,9 +2,12 @@
  * 背景表示システム - 背景画像の表示と管理
  */
 
-import PixiVN from "@drincs/pixi-vn";
+// TODO: Phase 5 - import PixiVN from "@drincs/pixi-vn";
 import type { GameConfig } from "../types/core.js";
-import type { IBackgroundDisplaySystem } from "../types/interfaces.js";
+import type {
+  IBackgroundDisplaySystem,
+  SpriteObject,
+} from "../types/interfaces.js";
 
 export interface BackgroundTransition {
   /** トランジション時間（ミリ秒） */
@@ -37,9 +40,9 @@ export interface BackgroundConfig {
 
 export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
   private config: GameConfig;
-  private currentBackground: any = null; // Pixi'VNの背景オブジェクト
+  private currentBackground: SpriteObject | null = null; // Pixi'VNの背景オブジェクト
   private backgroundHistory: string[] = [];
-  private preloadedBackgrounds: Map<string, any> = new Map();
+  private preloadedBackgrounds: Map<string, SpriteObject> = new Map();
 
   constructor(config: GameConfig) {
     this.config = config;
@@ -69,8 +72,13 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
       } as BackgroundConfig;
 
       // 前の背景を保存（履歴用）
-      if (this.currentBackground && imagePath !== this.backgroundHistory[this.backgroundHistory.length - 1]) {
-        this.backgroundHistory.push(this.backgroundHistory[this.backgroundHistory.length - 1] || "");
+      if (
+        this.currentBackground &&
+        imagePath !== this.backgroundHistory[this.backgroundHistory.length - 1]
+      ) {
+        this.backgroundHistory.push(
+          this.backgroundHistory[this.backgroundHistory.length - 1] || ""
+        );
         // 履歴サイズ制限（最大10個）
         if (this.backgroundHistory.length > 10) {
           this.backgroundHistory.shift();
@@ -88,7 +96,6 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
         case "zoom":
           await this.zoomTransition(config, transition);
           break;
-        case "instant":
         default:
           await this.instantTransition(config);
           break;
@@ -107,17 +114,23 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
    * 瞬間的な背景切り替え
    */
   private async instantTransition(config: BackgroundConfig): Promise<void> {
-    // TODO: Pixi'VN APIでの背景表示実装
+    // TODO: Phase 5 - Pixi'VN APIでの背景表示実装
     // 古い背景を削除
     if (this.currentBackground) {
-      // PixiVN.background.hide();
+      // TODO: Phase 5 - PixiVN.background.hide();
       console.log("Hide current background");
     }
 
     // 新しい背景を表示
-    // this.currentBackground = await PixiVN.background.show(config.imagePath);
-    this.currentBackground = { imagePath: config.imagePath }; // 仮実装
-    
+    // TODO: Phase 5 - this.currentBackground = await PixiVN.background.show(config.imagePath);
+    this.currentBackground = {
+      imagePath: config.imagePath,
+      x: 0,
+      y: 0,
+      alpha: 1,
+      scale: { set: () => {} },
+    }; // 仮実装 (Phase 5で実装)
+
     if (this.currentBackground) {
       this.applyBackgroundConfig(this.currentBackground, config);
     }
@@ -126,12 +139,21 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
   /**
    * フェードトランジション
    */
-  private async fadeTransition(config: BackgroundConfig, transition: BackgroundTransition): Promise<void> {
+  private async fadeTransition(
+    config: BackgroundConfig,
+    transition: BackgroundTransition
+  ): Promise<void> {
     const duration = transition.duration || 1000;
 
     // TODO: 新しい背景を非表示状態で作成
     // const newBackground = await PixiVN.background.show(config.imagePath);
-    const newBackground = { imagePath: config.imagePath, alpha: 0 }; // 仮実装
+    const newBackground: SpriteObject = {
+      imagePath: config.imagePath,
+      alpha: 0,
+      x: 0,
+      y: 0,
+      scale: { set: () => {} },
+    }; // 仮実装
     if (!newBackground) return;
 
     newBackground.alpha = 0;
@@ -142,8 +164,14 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
 
     // 古い背景をフェードアウトして削除
     if (this.currentBackground) {
-      await this.animateAlpha(this.currentBackground, this.currentBackground.alpha, 0, duration / 2);
-      PixiVN.background.hide();
+      await this.animateAlpha(
+        this.currentBackground,
+        this.currentBackground.alpha,
+        0,
+        duration / 2
+      );
+      // TODO: Phase 5 - PixiVN.background.hide();
+      console.log("Hide old background with fade");
     }
 
     this.currentBackground = newBackground;
@@ -152,20 +180,30 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
   /**
    * スライドトランジション
    */
-  private async slideTransition(config: BackgroundConfig, transition: BackgroundTransition): Promise<void> {
+  private async slideTransition(
+    config: BackgroundConfig,
+    transition: BackgroundTransition
+  ): Promise<void> {
     const duration = transition.duration || 800;
     const direction = transition.slideDirection || "left";
     const screenWidth = this.config.screenWidth || 1280;
     const screenHeight = this.config.screenHeight || 720;
 
     // 新しい背景の初期位置を設定
-    const newBackground = await PixiVN.background.show(config.imagePath);
+    // TODO: Phase 5 - const newBackground = await PixiVN.background.show(config.imagePath);
+    const newBackground: SpriteObject = {
+      imagePath: config.imagePath,
+      x: 0,
+      y: 0,
+      alpha: 1,
+      scale: { set: () => {} },
+    }; // 仮実装
     if (!newBackground) return;
 
     let startX = 0;
     let startY = 0;
-    let targetX = 0;
-    let targetY = 0;
+    const targetX = 0;
+    const targetY = 0;
 
     switch (direction) {
       case "left":
@@ -187,11 +225,19 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
     this.applyBackgroundConfig(newBackground, config);
 
     // スライドアニメーション
-    await this.animatePosition(newBackground, startX, startY, targetX, targetY, duration);
+    await this.animatePosition(
+      newBackground,
+      startX,
+      startY,
+      targetX,
+      targetY,
+      duration
+    );
 
     // 古い背景を削除
     if (this.currentBackground && this.currentBackground !== newBackground) {
-      PixiVN.background.hide();
+      // TODO: Phase 5 - PixiVN.background.hide();
+      console.log("Hide old background with slide");
     }
 
     this.currentBackground = newBackground;
@@ -200,27 +246,42 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
   /**
    * ズームトランジション
    */
-  private async zoomTransition(config: BackgroundConfig, transition: BackgroundTransition): Promise<void> {
+  private async zoomTransition(
+    config: BackgroundConfig,
+    transition: BackgroundTransition
+  ): Promise<void> {
     const duration = transition.duration || 600;
 
     // 新しい背景を小さくして表示
-    const newBackground = await PixiVN.background.show(config.imagePath);
+    // TODO: Phase 5 - const newBackground = await PixiVN.background.show(config.imagePath);
+    const newBackground: SpriteObject = {
+      imagePath: config.imagePath,
+      scale: { set: () => {} },
+      alpha: 0,
+      x: 0,
+      y: 0,
+    }; // 仮実装
     if (!newBackground) return;
 
     const targetScale = config.scale || 1;
     newBackground.scale.set(0.5);
     newBackground.alpha = 0;
-    this.applyBackgroundConfig(newBackground, { ...config, scale: 0.5, alpha: 0 });
+    this.applyBackgroundConfig(newBackground, {
+      ...config,
+      scale: 0.5,
+      alpha: 0,
+    });
 
     // ズームイン＆フェードイン
     await Promise.all([
       this.animateScale(newBackground, 0.5, targetScale, duration),
-      this.animateAlpha(newBackground, 0, config.alpha || 1, duration)
+      this.animateAlpha(newBackground, 0, config.alpha || 1, duration),
     ]);
 
     // 古い背景を削除
     if (this.currentBackground && this.currentBackground !== newBackground) {
-      PixiVN.background.hide();
+      // TODO: Phase 5 - PixiVN.background.hide();
+      console.log("Hide old background with zoom");
     }
 
     this.currentBackground = newBackground;
@@ -229,7 +290,10 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
   /**
    * 背景設定の適用
    */
-  private applyBackgroundConfig(background: any, config: BackgroundConfig): void {
+  private applyBackgroundConfig(
+    background: SpriteObject,
+    config: BackgroundConfig
+  ): void {
     if (config.position) {
       background.x = config.position.x;
       background.y = config.position.y;
@@ -257,44 +321,61 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
   /**
    * フィット方式の適用
    */
-  private applyFitMode(background: any, fitMode: string): void {
+  private applyFitMode(background: SpriteObject, fitMode: string): void {
     const screenWidth = this.config.screenWidth || 1280;
     const screenHeight = this.config.screenHeight || 720;
 
     switch (fitMode) {
-      case "cover":
+      case "cover": {
         // 画面を覆うようにスケール（アスペクト比維持）
-        const scaleX = screenWidth / background.texture.width;
-        const scaleY = screenHeight / background.texture.height;
+        // TODO: Phase 5 - Use actual texture dimensions
+        const scaleX = screenWidth / 1920; // Default texture width
+        const scaleY = screenHeight / 1080; // Default texture height
         const scale = Math.max(scaleX, scaleY);
         background.scale.set(scale);
         break;
-      case "contain":
+      }
+      case "contain": {
         // 画面に収まるようにスケール（アスペクト比維持）
-        const containScaleX = screenWidth / background.texture.width;
-        const containScaleY = screenHeight / background.texture.height;
+        // TODO: Phase 5 - Use actual texture dimensions
+        const containScaleX = screenWidth / 1920; // Default texture width
+        const containScaleY = screenHeight / 1080; // Default texture height
         const containScale = Math.min(containScaleX, containScaleY);
         background.scale.set(containScale);
         break;
-      case "fill":
+      }
+      case "fill": {
         // 画面全体に引き伸ばし
-        background.width = screenWidth;
-        background.height = screenHeight;
+        // TODO: Phase 5 - Set actual width/height properties
+        console.log(
+          `Fill mode: setting dimensions to ${screenWidth}x${screenHeight}`
+        );
         break;
-      case "stretch":
+      }
+      case "stretch": {
         // アスペクト比を無視して引き伸ばし
-        background.scale.x = screenWidth / background.texture.width;
-        background.scale.y = screenHeight / background.texture.height;
+        // TODO: Phase 5 - Set actual scale properties
+        if (
+          background.scale.x !== undefined &&
+          background.scale.y !== undefined
+        ) {
+          background.scale.x = screenWidth / 1920; // Default texture width
+          background.scale.y = screenHeight / 1080; // Default texture height
+        }
         break;
+      }
     }
   }
 
   /**
    * フィルター効果の適用
    */
-  private applyFilters(background: any, filters: string[]): void {
-    // TODO: フィルター効果の実装
-    console.log("Applying filters:", filters);
+  private applyFilters(background: SpriteObject, filters: string[]): void {
+    // TODO: フィルター効果の実装 (Phase 5 - Pixi'VN統合時に実装)
+    console.log(`Applying filters to background:`, {
+      background: background.imagePath || "unknown",
+      filters,
+    });
   }
 
   /**
@@ -311,13 +392,18 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
 
       switch (transition.type) {
         case "fade":
-          await this.animateAlpha(this.currentBackground, this.currentBackground.alpha, 0, duration);
+          await this.animateAlpha(
+            this.currentBackground,
+            this.currentBackground.alpha,
+            0,
+            duration
+          );
           break;
-        case "slide":
+        case "slide": {
           const direction = transition.slideDirection || "left";
           const screenWidth = this.config.screenWidth || 1280;
           const screenHeight = this.config.screenHeight || 720;
-          
+
           let targetX = 0;
           let targetY = 0;
 
@@ -345,19 +431,30 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
             duration
           );
           break;
+        }
         case "zoom":
           await Promise.all([
-            this.animateScale(this.currentBackground, this.currentBackground.scale.x, 0, duration),
-            this.animateAlpha(this.currentBackground, this.currentBackground.alpha, 0, duration)
+            this.animateScale(
+              this.currentBackground,
+              this.currentBackground.scale.x || 1,
+              0,
+              duration
+            ),
+            this.animateAlpha(
+              this.currentBackground,
+              this.currentBackground.alpha,
+              0,
+              duration
+            ),
           ]);
           break;
-        case "instant":
         default:
           // 即座に非表示
           break;
       }
 
-      PixiVN.background.hide();
+      // TODO: Phase 5 - PixiVN.background.hide();
+      console.log("Background hidden with transition");
       this.currentBackground = null;
 
       console.log("Background hidden");
@@ -381,7 +478,9 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
   /**
    * 前の背景に戻る
    */
-  async goToPreviousBackground(transition: BackgroundTransition = {}): Promise<void> {
+  async goToPreviousBackground(
+    transition: BackgroundTransition = {}
+  ): Promise<void> {
     if (this.backgroundHistory.length < 2) {
       console.warn("No previous background available");
       return;
@@ -400,14 +499,19 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
   /**
    * アルファ値アニメーション
    */
-  private async animateAlpha(sprite: any, fromAlpha: number, toAlpha: number, duration: number): Promise<void> {
+  private async animateAlpha(
+    sprite: SpriteObject,
+    fromAlpha: number,
+    toAlpha: number,
+    duration: number
+  ): Promise<void> {
     return new Promise((resolve) => {
       const startTime = Date.now();
 
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
+
         sprite.alpha = fromAlpha + (toAlpha - fromAlpha) * progress;
 
         if (progress < 1) {
@@ -425,7 +529,7 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
    * 位置アニメーション
    */
   private async animatePosition(
-    sprite: any,
+    sprite: SpriteObject,
     fromX: number,
     fromY: number,
     toX: number,
@@ -438,7 +542,7 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
+
         sprite.x = fromX + (toX - fromX) * progress;
         sprite.y = fromY + (toY - fromY) * progress;
 
@@ -456,14 +560,19 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
   /**
    * スケールアニメーション
    */
-  private async animateScale(sprite: any, fromScale: number, toScale: number, duration: number): Promise<void> {
+  private async animateScale(
+    sprite: SpriteObject,
+    fromScale: number,
+    toScale: number,
+    duration: number
+  ): Promise<void> {
     return new Promise((resolve) => {
       const startTime = Date.now();
 
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
+
         const currentScale = fromScale + (toScale - fromScale) * progress;
         sprite.scale.set(currentScale);
 
@@ -482,7 +591,9 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
    * 現在の背景情報を取得
    */
   getCurrentBackground(): string | null {
-    return this.backgroundHistory.length > 0 ? this.backgroundHistory[this.backgroundHistory.length - 1] : null;
+    const lastBackground =
+      this.backgroundHistory[this.backgroundHistory.length - 1];
+    return lastBackground ?? null;
   }
 
   /**

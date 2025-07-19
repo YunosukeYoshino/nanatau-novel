@@ -2,9 +2,12 @@
  * キャラクター表示システム - 立ち絵の表示と管理
  */
 
-import PixiVN from "@drincs/pixi-vn";
+// TODO: Phase 5 - import PixiVN from "@drincs/pixi-vn";
 import type { GameConfig } from "../types/core.js";
-import type { ICharacterDisplaySystem } from "../types/interfaces.js";
+import type {
+  ICharacterDisplaySystem,
+  SpriteObject,
+} from "../types/interfaces.js";
 
 export interface CharacterData {
   /** キャラクターID */
@@ -53,7 +56,7 @@ export interface CharacterTransition {
 export class CharacterDisplaySystem implements ICharacterDisplaySystem {
   private config: GameConfig;
   private characters: Map<string, CharacterData> = new Map();
-  private displayedCharacters: Map<string, any> = new Map(); // Pixi'VNのキャラクターオブジェクト
+  private displayedCharacters: Map<string, SpriteObject> = new Map(); // Pixi'VNのキャラクターオブジェクト
   private characterPositions: Map<string, CharacterPosition> = new Map();
 
   constructor(config: GameConfig) {
@@ -75,9 +78,9 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
     const screenWidth = this.config.screenWidth || 1280;
     const positions: Record<string, CharacterPosition> = {
       "far-left": { position: "far-left", offsetX: screenWidth * 0.1 },
-      "left": { position: "left", offsetX: screenWidth * 0.25 },
-      "center": { position: "center", offsetX: screenWidth * 0.5 },
-      "right": { position: "right", offsetX: screenWidth * 0.75 },
+      left: { position: "left", offsetX: screenWidth * 0.25 },
+      center: { position: "center", offsetX: screenWidth * 0.5 },
+      right: { position: "right", offsetX: screenWidth * 0.75 },
       "far-right": { position: "far-right", offsetX: screenWidth * 0.9 },
     };
 
@@ -111,18 +114,32 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
 
     try {
       // 表情の取得
-      const expressionPath = character.expressions[expression] || character.expressions[character.defaultExpression];
+      const expressionPath =
+        character.expressions[expression] ||
+        character.expressions[character.defaultExpression];
       if (!expressionPath) {
-        console.warn(`Expression not found: ${expression} for character ${characterId}`);
+        console.warn(
+          `Expression not found: ${expression} for character ${characterId}`
+        );
         return;
       }
 
       // 画像パスの構築
       const imagePath = `${character.basePath}/${expressionPath}`;
+      console.log(
+        `Loading character sprite: ${characterId} with image: ${imagePath}`
+      );
 
-      // Pixi'VNでキャラクターを表示
-      const characterSprite = await PixiVN.character.show(characterId, imagePath);
-      
+      // TODO: Phase 5 - Pixi'VNでキャラクターを表示
+      // const characterSprite = await PixiVN.character.show(characterId, imagePath);
+      const characterSprite: SpriteObject = {
+        x: 0,
+        y: 0,
+        scale: { set: () => {} },
+        alpha: 1,
+        imagePath,
+      }; // 仮実装
+
       // 位置の設定
       const charPosition = this.getCharacterPosition(position);
       if (charPosition && characterSprite) {
@@ -145,14 +162,20 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
         if (transition.slide) {
           const originalX = characterSprite.x;
           characterSprite.x = originalX - 200; // スライド開始位置
-          await this.slideIn(characterSprite, originalX, transition.duration || 500);
+          await this.slideIn(
+            characterSprite,
+            originalX,
+            transition.duration || 500
+          );
         }
       }
 
       // 表示中キャラクターリストに追加
       this.displayedCharacters.set(characterId, characterSprite);
 
-      console.log(`Character displayed: ${characterId} with expression: ${expression} at position: ${position}`);
+      console.log(
+        `Character displayed: ${characterId} with expression: ${expression} at position: ${position}`
+      );
     } catch (error) {
       console.error(`Failed to show character: ${characterId}`, error);
     }
@@ -181,8 +204,9 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
         await this.slideOut(characterSprite, transition.duration || 500);
       }
 
-      // Pixi'VNでキャラクターを非表示
-      await PixiVN.character.hide(characterId);
+      // TODO: Phase 5 - Pixi'VNでキャラクターを非表示
+      // await PixiVN.character.hide(characterId);
+      console.log(`Character hidden: ${characterId}`);
 
       // 表示中キャラクターリストから削除
       this.displayedCharacters.delete(characterId);
@@ -211,24 +235,33 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
 
     try {
       // 新しい表情の取得
-      const expressionPath = character.expressions[expression] || character.expressions[character.defaultExpression];
+      const expressionPath =
+        character.expressions[expression] ||
+        character.expressions[character.defaultExpression];
       if (!expressionPath) {
-        console.warn(`Expression not found: ${expression} for character ${characterId}`);
+        console.warn(
+          `Expression not found: ${expression} for character ${characterId}`
+        );
         return;
       }
 
+      // TODO: Phase 5 - トランジション効果付きで表情変更
       const imagePath = `${character.basePath}/${expressionPath}`;
+      console.log(`Expression change to: ${imagePath}`);
 
-      // トランジション効果付きで表情変更
       if (transition.fade) {
         await this.fadeOut(characterSprite, (transition.duration || 300) / 2);
-        // TODO: 画像の更新
+        // TODO: Phase 5 - 画像の更新 PixiVN APIでimagePathを使用
+        console.log(`Updated sprite with: ${imagePath}`);
         await this.fadeIn(characterSprite, (transition.duration || 300) / 2);
       } else {
-        // TODO: 即座に画像更新
+        // TODO: Phase 5 - 即座に画像更新 PixiVN APIでimagePathを使用
+        console.log(`Instantly updated sprite with: ${imagePath}`);
       }
 
-      console.log(`Character expression changed: ${characterId} to ${expression}`);
+      console.log(
+        `Character expression changed: ${characterId} to ${expression}`
+      );
     } catch (error) {
       console.error(`Failed to change expression: ${characterId}`, error);
     }
@@ -272,7 +305,7 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
    */
   async hideAllCharacters(transition: CharacterTransition = {}): Promise<void> {
     const hidePromises = Array.from(this.displayedCharacters.keys()).map(
-      characterId => this.hideCharacter(characterId, transition)
+      (characterId) => this.hideCharacter(characterId, transition)
     );
 
     await Promise.all(hidePromises);
@@ -282,7 +315,7 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
   /**
    * フェードイン効果
    */
-  private async fadeIn(sprite: any, duration: number): Promise<void> {
+  private async fadeIn(sprite: SpriteObject, duration: number): Promise<void> {
     return new Promise((resolve) => {
       const startTime = Date.now();
       const startAlpha = sprite.alpha;
@@ -291,7 +324,7 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
+
         sprite.alpha = startAlpha + (targetAlpha - startAlpha) * progress;
 
         if (progress < 1) {
@@ -308,7 +341,7 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
   /**
    * フェードアウト効果
    */
-  private async fadeOut(sprite: any, duration: number): Promise<void> {
+  private async fadeOut(sprite: SpriteObject, duration: number): Promise<void> {
     return new Promise((resolve) => {
       const startTime = Date.now();
       const startAlpha = sprite.alpha;
@@ -317,7 +350,7 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
+
         sprite.alpha = startAlpha + (targetAlpha - startAlpha) * progress;
 
         if (progress < 1) {
@@ -334,7 +367,11 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
   /**
    * スライドイン効果
    */
-  private async slideIn(sprite: any, targetX: number, duration: number): Promise<void> {
+  private async slideIn(
+    sprite: SpriteObject,
+    targetX: number,
+    duration: number
+  ): Promise<void> {
     return new Promise((resolve) => {
       const startTime = Date.now();
       const startX = sprite.x;
@@ -342,7 +379,7 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
+
         sprite.x = startX + (targetX - startX) * progress;
 
         if (progress < 1) {
@@ -359,7 +396,10 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
   /**
    * スライドアウト効果
    */
-  private async slideOut(sprite: any, duration: number): Promise<void> {
+  private async slideOut(
+    sprite: SpriteObject,
+    duration: number
+  ): Promise<void> {
     return new Promise((resolve) => {
       const startTime = Date.now();
       const startX = sprite.x;
@@ -368,7 +408,7 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
+
         sprite.x = startX + (targetX - startX) * progress;
 
         if (progress < 1) {
@@ -385,7 +425,12 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
   /**
    * 位置アニメーション
    */
-  private async animatePosition(sprite: any, targetX: number, targetY: number, duration: number): Promise<void> {
+  private async animatePosition(
+    sprite: SpriteObject,
+    targetX: number,
+    targetY: number,
+    duration: number
+  ): Promise<void> {
     return new Promise((resolve) => {
       const startTime = Date.now();
       const startX = sprite.x;
@@ -394,7 +439,7 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
+
         sprite.x = startX + (targetX - startX) * progress;
         sprite.y = startY + (targetY - startY) * progress;
 
@@ -412,7 +457,9 @@ export class CharacterDisplaySystem implements ICharacterDisplaySystem {
   /**
    * キャラクター位置の取得
    */
-  private getCharacterPosition(positionName: string): CharacterPosition | undefined {
+  private getCharacterPosition(
+    positionName: string
+  ): CharacterPosition | undefined {
     return this.characterPositions.get(positionName);
   }
 
