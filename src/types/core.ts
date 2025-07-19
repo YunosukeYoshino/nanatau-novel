@@ -4,6 +4,9 @@
 
 // ゲーム設定
 export interface GameConfig {
+  // ゲーム情報
+  version?: string;
+
   // 画面設定
   screen: {
     width: number;
@@ -29,6 +32,10 @@ export interface GameConfig {
   // その他設定
   skipRead: boolean;
   language: string;
+
+  // 画面サイズのアクセサー（後方互換性のため）
+  screenWidth?: number;
+  screenHeight?: number;
 }
 
 // シーンデータ
@@ -39,6 +46,7 @@ export interface SceneData {
   text: string;
   choices: ChoiceData[] | null;
   directives: DirectiveData[];
+  dialogue?: DialogueData;
   metadata: {
     sceneNumber: number;
     tags: string[];
@@ -87,10 +95,14 @@ export interface GameState {
 
 // セーブスロット情報
 export interface SaveSlotInfo {
-  slotId: string;
+  id: string;
   timestamp: number;
-  sceneName: string;
-  previewImage?: string;
+  scenarioPath: string;
+  sceneTitle: string;
+  characterName: string;
+  currentText: string;
+  screenshot?: string;
+  dataSize: number;
 }
 
 // ディレクティブデータ
@@ -113,6 +125,8 @@ export interface DialogueData {
   text: string;
   isMonologue: boolean;
   emotion?: string;
+  characterExpression?: string;
+  voice?: string;
 }
 
 // メニュータイプ
@@ -133,7 +147,7 @@ export interface ChoiceHistory {
 
 // ルート条件
 export interface RouteCondition {
-  type: "flag" | "variable" | "choice_history" | "route";
+  type: "flag" | "variable" | "choice_history" | "route" | "scene_visited";
   key: string;
   operator:
     | "equals"
@@ -143,4 +157,13 @@ export interface RouteCondition {
     | "greater_equal"
     | "less_equal";
   value: unknown;
+}
+
+// ルート定義
+export interface RouteDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  scenarioPath: string;
+  conditions: RouteCondition[];
 }
