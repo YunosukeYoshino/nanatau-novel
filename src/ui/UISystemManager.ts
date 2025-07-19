@@ -4,23 +4,22 @@
  */
 
 import type { GameConfig, GameState } from "../types/core.js";
+import { GameMenuSystem } from "./GameMenuSystem.js";
 import type {
-  IUISystemManager,
-  IMainMenuSystem,
   IGameMenuSystem,
-  ISettingsSystem,
+  IMainMenuSystem,
   ISaveLoadMenuSystem,
+  ISettingsSystem,
   ITitleScreenSystem,
   IUIStateManager,
-  UIState,
+  IUISystemManager,
   TransitionOptions,
+  UIState,
 } from "./interfaces.js";
-
 // 各システムのインポート
 import { MainMenuSystem } from "./MainMenuSystem.js";
-import { GameMenuSystem } from "./GameMenuSystem.js";
-import { SettingsSystem } from "./SettingsSystem.js";
 import { SaveLoadMenuSystem } from "./SaveLoadMenuSystem.js";
+import { SettingsSystem } from "./SettingsSystem.js";
 import { TitleScreenSystem } from "./TitleScreenSystem.js";
 import { UIStateManager } from "./UIStateManager.js";
 

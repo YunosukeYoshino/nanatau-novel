@@ -5,12 +5,12 @@
 
 import type { GameConfig } from "../types/core.js";
 import type {
-  ISettingsSystem,
-  VolumeSettings,
-  DisplaySettings,
   ControlSettings,
-  UserSettings,
+  DisplaySettings,
+  ISettingsSystem,
   UISlider,
+  UserSettings,
+  VolumeSettings,
 } from "./interfaces.js";
 
 export interface SettingsConfig {
@@ -946,7 +946,7 @@ export class SettingsSystem implements ISettingsSystem {
    */
   dispose(): void {
     // DOM要素の削除
-    if (this.containerElement && this.containerElement.parentNode) {
+    if (this.containerElement?.parentNode) {
       this.containerElement.parentNode.removeChild(this.containerElement);
     }
 

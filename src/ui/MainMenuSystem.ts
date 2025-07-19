@@ -4,7 +4,7 @@
  */
 
 import type { GameConfig } from "../types/core.js";
-import type { IMainMenuSystem, UIButton, MenuItem } from "./interfaces.js";
+import type { IMainMenuSystem, MenuItem, UIButton } from "./interfaces.js";
 
 export interface MainMenuConfig {
   /** メニューの表示位置 */
@@ -620,7 +620,7 @@ export class MainMenuSystem implements IMainMenuSystem {
     // （実装では具体的なリスナー管理が必要）
 
     // DOM要素の削除
-    if (this.containerElement && this.containerElement.parentNode) {
+    if (this.containerElement?.parentNode) {
       this.containerElement.parentNode.removeChild(this.containerElement);
     }
 

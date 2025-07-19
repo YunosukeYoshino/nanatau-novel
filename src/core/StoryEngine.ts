@@ -2,8 +2,8 @@
  * ストーリーエンジン - ゲームのシーン管理とストーリー進行を制御
  */
 
-import type { ScenarioData, SceneData, GameState } from "../types/core.js";
-import type { IStoryEngine, IScenarioParser } from "../types/interfaces.js";
+import type { GameState, ScenarioData, SceneData } from "../types/core.js";
+import type { IScenarioParser, IStoryEngine } from "../types/interfaces.js";
 import { ScenarioParser } from "./ScenarioParser.js";
 
 export class StoryEngine implements IStoryEngine {

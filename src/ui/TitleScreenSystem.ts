@@ -511,17 +511,21 @@ export class TitleScreenSystem implements ITitleScreenSystem {
     // ロゴのフェードイン
     if (this.titleLogoElement) {
       setTimeout(() => {
-        this.titleLogoElement!.style.opacity = "1";
+        if (this.titleLogoElement) {
+          this.titleLogoElement.style.opacity = "1";
+        }
       }, this.titleConfig.animation.logoFadeInDelay);
     }
 
     // "Press any key"のフェードイン
     if (this.pressKeyElement) {
       setTimeout(() => {
-        this.pressKeyElement!.style.opacity = "1";
+        if (this.pressKeyElement) {
+          this.pressKeyElement.style.opacity = "1";
 
-        // 点滅アニメーション開始
-        this.startBlinkAnimation();
+          // 点滅アニメーション開始
+          this.startBlinkAnimation();
+        }
       }, this.titleConfig.animation.pressKeyFadeInDelay);
     }
   }
@@ -686,7 +690,7 @@ export class TitleScreenSystem implements ITitleScreenSystem {
     }
 
     // DOM要素の削除
-    if (this.containerElement && this.containerElement.parentNode) {
+    if (this.containerElement?.parentNode) {
       this.containerElement.parentNode.removeChild(this.containerElement);
     }
 

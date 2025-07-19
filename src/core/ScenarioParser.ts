@@ -4,11 +4,11 @@
  */
 
 import type {
+  ChoiceData,
+  DialogueData,
+  DirectiveData,
   ScenarioData,
   SceneData,
-  ChoiceData,
-  DirectiveData,
-  DialogueData,
 } from "../types/core.js";
 import type { IScenarioParser } from "../types/interfaces.js";
 

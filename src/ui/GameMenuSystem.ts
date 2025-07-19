@@ -4,7 +4,7 @@
  */
 
 import type { GameConfig } from "../types/core.js";
-import type { IGameMenuSystem, UIButton, MenuItem } from "./interfaces.js";
+import type { IGameMenuSystem, MenuItem, UIButton } from "./interfaces.js";
 
 export interface GameMenuConfig {
   /** メニューの表示位置 */
@@ -801,7 +801,9 @@ export class GameMenuSystem implements IGameMenuSystem {
 
       // スライドアウト
       setTimeout(() => {
-        this.containerElement!.style.right = `-${this.menuConfig.size.width}px`;
+        if (this.containerElement) {
+          this.containerElement.style.right = `-${this.menuConfig.size.width}px`;
+        }
 
         setTimeout(() => {
           resolve();
@@ -836,7 +838,7 @@ export class GameMenuSystem implements IGameMenuSystem {
    */
   dispose(): void {
     // DOM要素の削除
-    if (this.containerElement && this.containerElement.parentNode) {
+    if (this.containerElement?.parentNode) {
       this.containerElement.parentNode.removeChild(this.containerElement);
     }
 

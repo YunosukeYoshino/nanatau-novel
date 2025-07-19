@@ -2,9 +2,9 @@
  * StoryEngine のテスト
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { GameState, ScenarioData } from "../../types/core.js";
 import { StoryEngine } from "../StoryEngine.js";
-import type { ScenarioData, GameState } from "../../types/core.js";
 
 // テスト用型定義
 interface MockResponse {

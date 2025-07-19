@@ -3,7 +3,7 @@
  * Phase 5: UI/UX実装システム
  */
 
-import type { GameState, GameConfig } from "../types/core.js";
+import type { GameConfig, GameState } from "../types/core.js";
 
 // UI要素の基本インターフェース
 export interface UIElement {

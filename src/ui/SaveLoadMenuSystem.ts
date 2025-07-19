@@ -3,7 +3,7 @@
  * Phase 5: UI/UX実装システム
  */
 
-import type { GameConfig } from "../types/core.js";
+import type { GameConfig, GameState } from "../types/core.js";
 import type { ISaveLoadMenuSystem } from "./interfaces.js";
 
 // SaveSlotInfo 型定義
@@ -71,6 +71,8 @@ export class SaveLoadMenuSystem implements ISaveLoadMenuSystem {
     undefined;
   private onCloseCallback: (() => void) | undefined = undefined;
   private getSaveSlotsCallback: (() => SaveSlotInfo[]) | undefined = undefined;
+  private getCurrentGameStateCallback: (() => GameState | null) | undefined =
+    undefined;
 
   constructor(
     gameConfig: GameConfig,
@@ -208,6 +210,15 @@ export class SaveLoadMenuSystem implements ISaveLoadMenuSystem {
     try {
       console.log(`Saving to slot: ${slotId}`);
 
+      // 現在のゲーム状態を取得（セーブ時に必要な情報）
+      const currentGameState = this.getCurrentGameStateCallback
+        ? this.getCurrentGameStateCallback()
+        : null;
+      console.log(
+        "Current game state for save:",
+        currentGameState ? "Available" : "Not available"
+      );
+
       if (this.onSaveCallback) {
         await this.onSaveCallback(slotId);
 
@@ -307,12 +318,14 @@ export class SaveLoadMenuSystem implements ISaveLoadMenuSystem {
     onDelete?: (slotId: string) => Promise<void>;
     onClose?: () => void;
     getSaveSlots?: () => SaveSlotInfo[];
+    getCurrentGameState?: () => GameState | null;
   }): void {
     this.onSaveCallback = callbacks.onSave;
     this.onLoadCallback = callbacks.onLoad;
     this.onDeleteCallback = callbacks.onDelete;
     this.onCloseCallback = callbacks.onClose;
     this.getSaveSlotsCallback = callbacks.getSaveSlots;
+    this.getCurrentGameStateCallback = callbacks.getCurrentGameState;
   }
 
   /**
@@ -1005,7 +1018,7 @@ export class SaveLoadMenuSystem implements ISaveLoadMenuSystem {
    */
   dispose(): void {
     // DOM要素の削除
-    if (this.containerElement && this.containerElement.parentNode) {
+    if (this.containerElement?.parentNode) {
       this.containerElement.parentNode.removeChild(this.containerElement);
     }
 

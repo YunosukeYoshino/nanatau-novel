@@ -2,13 +2,13 @@
  * ChoiceSystem のテスト
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
-import { ChoiceSystem } from "../ChoiceSystem.js";
+import { beforeEach, describe, expect, it } from "vitest";
 import type {
   ChoiceData,
   GameState,
   RouteCondition,
 } from "../../types/core.js";
+import { ChoiceSystem } from "../ChoiceSystem.js";
 
 describe("ChoiceSystem", () => {
   let choiceSystem: ChoiceSystem;
