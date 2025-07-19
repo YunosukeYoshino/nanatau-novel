@@ -246,8 +246,10 @@ export class RouteBranchSystem implements IRouteBranchSystem {
         case "scene_visited":
           return this.evaluateSceneVisitedCondition(condition, gameState);
         default:
-          console.warn(`Unknown condition type: ${condition.type}`);
-          return true;
+          console.warn(
+            `Unknown condition type: ${condition.type || "undefined"}`
+          );
+          return false;
       }
     });
   }

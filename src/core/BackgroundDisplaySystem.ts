@@ -71,14 +71,11 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
         ...backgroundConfig,
       } as BackgroundConfig;
 
-      // 前の背景を保存（履歴用）
-      if (
-        this.currentBackground &&
-        imagePath !== this.backgroundHistory[this.backgroundHistory.length - 1]
-      ) {
-        this.backgroundHistory.push(
-          this.backgroundHistory[this.backgroundHistory.length - 1] || ""
-        );
+      // 履歴管理の簡素化：重複を避けて現在の背景を履歴に追加
+      const lastBackground =
+        this.backgroundHistory[this.backgroundHistory.length - 1];
+      if (imagePath !== lastBackground) {
+        this.backgroundHistory.push(imagePath);
         // 履歴サイズ制限（最大10個）
         if (this.backgroundHistory.length > 10) {
           this.backgroundHistory.shift();
@@ -100,9 +97,6 @@ export class BackgroundDisplaySystem implements IBackgroundDisplaySystem {
           await this.instantTransition(config);
           break;
       }
-
-      // 履歴に追加
-      this.backgroundHistory.push(imagePath);
 
       console.log(`Background displayed: ${imagePath}`);
     } catch (error) {

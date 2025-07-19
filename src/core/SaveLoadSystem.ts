@@ -51,8 +51,8 @@ export class SaveLoadSystem implements ISaveSystem {
   private config: SaveSystemConfig;
   private gameConfig: GameConfig;
   private autoSaveTimer: number | null = null;
-  // TODO: Phase 5 - 暗号化機能で使用予定
-  // private encryptionKey: string = "nanatau_novel_game";
+  // TODO: Phase 5 - 暗号化機能で使用予定（環境変数から取得）
+  // private encryptionKey: string = process.env.SAVE_ENCRYPTION_KEY || "";
 
   constructor(gameConfig: GameConfig, config?: Partial<SaveSystemConfig>) {
     this.gameConfig = gameConfig;
