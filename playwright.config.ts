@@ -69,11 +69,11 @@ export default defineConfig({
     // },
   ],
 
-  /* Run your local dev server before starting the tests */
+  /* Use existing dev server */
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',
-    reuseExistingServer: !process.env['CI'],
-    timeout: 60000,
+    reuseExistingServer: true, // 既存のサーバーを使用
+    timeout: 10000,
   },
 });

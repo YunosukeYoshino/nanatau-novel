@@ -20,3 +20,5 @@ dist/
 
 node_modules
 release
+playwright-report
+test-results
