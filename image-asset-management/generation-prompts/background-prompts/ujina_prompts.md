@@ -1,0 +1,23 @@
+# 背景専用プロンプト集 (宇品地区)
+
+## 場所別プロンプト (各20パターン)
+
+### 宇品の坂道 (Ujina Hill Road)
+- **プロンプト:** masterpiece, best quality, highres, absurdres, ultra-detailed, scenery, background, ((Ujina hill road)), quiet residential area, view of the Seto Inland Sea, telephone poles, summer, daytime, cinematic lighting, anime style, visual novel background
+- **ネガティブプロンプト:** (worst quality, low quality:1.4), (deformed, distorted, disfigured:1.3), blurry, ugly, person, character, car
+
+#### 時間帯・天候バリエーション (各10パターン)
+- **夕暮れ (Sunset):** (golden hour), sunset, long shadows, orange sky, ...
+- **夜 (Night):** (night), streetlights, dark, starry sky, ...
+
+### 広島港 (Hiroshima Port)
+- **プロンプト:** masterpiece, best quality, highres, scenery, background, ((Hiroshima Port)), harbor, ships, seagulls, ocean, ...
+- **ネガティブプロンプト:** ...
+
+... (他の場所) ...
+
+## 特殊背景プロンプト
+
+### ステンドグラス世界 (Stained Glass World)
+- **プロンプト:** masterpiece, best quality, highres, scenery, background, ((world inside a stained glass)), field of canola flowers, vibrant colors, surreal, fantastical, glowing light, ...
+- **ネガティブプロンプト:** ...

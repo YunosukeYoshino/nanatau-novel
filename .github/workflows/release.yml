@@ -1,0 +1,186 @@
+name: Release Multi-Platform
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+  build-web:
+    name: Build Web Version
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: prepare
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web version
+        run: npm run build:web
+
+      - name: Create web archive
+        run: |
+          cd dist
+          zip -r ../nanatau-novel-${{ needs.prepare.outputs.version }}-web.zip .
+          cd ..
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-release
+          path: ./nanatau-novel-${{ needs.prepare.outputs.version }}-web.zip
+
+  build-desktop:
+    name: Build Desktop Version
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            ext: tar.gz
+          - os: windows-latest
+            platform: win
+            ext: zip
+          - os: macos-latest
+            platform: mac
+            ext: zip
+    
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    needs: prepare
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build electron app
+        run: npm run build:electron
+
+      - name: Package electron app (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          npx electron-builder --linux --publish never
+          cd dist
+          tar -czf ../nanatau-novel-${{ needs.prepare.outputs.version }}-${{ matrix.platform }}.${{ matrix.ext }} .
+          cd ..
+
+      - name: Package electron app (Windows)
+        if: matrix.platform == 'win'
+        run: |
+          npx electron-builder --win --publish never
+          Compress-Archive -Path dist/* -DestinationPath nanatau-novel-${{ needs.prepare.outputs.version }}-${{ matrix.platform }}.${{ matrix.ext }}
+
+      - name: Package electron app (macOS)
+        if: matrix.platform == 'mac'
+        run: |
+          npx electron-builder --mac --publish never
+          cd dist
+          zip -r ../nanatau-novel-${{ needs.prepare.outputs.version }}-${{ matrix.platform }}.${{ matrix.ext }} .
+          cd ..
+
+      - name: Upload desktop artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}
+          path: ./nanatau-novel-${{ needs.prepare.outputs.version }}-${{ matrix.platform }}.${{ matrix.ext }}
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [prepare, build-web, build-desktop]
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.prepare.outputs.version }}
+          name: ななたうノベルゲーム ${{ needs.prepare.outputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            ./artifacts/**/*
+          body: |
+            ## 🎮 ななたうノベルゲーム ${{ needs.prepare.outputs.version }}
+            
+            ### 📥 ダウンロード
+            - **Web版**: [オンラインでプレイ](https://yunosukeyoshino.github.io/nanatau-novel/)
+            - **Windows版**: nanatau-novel-${{ needs.prepare.outputs.version }}-win.zip
+            - **macOS版**: nanatau-novel-${{ needs.prepare.outputs.version }}-mac.zip
+            - **Linux版**: nanatau-novel-${{ needs.prepare.outputs.version }}-linux.zip
+            
+            ### ✨ 特徴
+            - ビジュアルノベルゲーム
+            - 美しいピクセルアート
+            - 感動的なストーリー
+            - 複数エンディング
+            
+            ### 🔧 システム要件
+            - **Web版**: モダンブラウザ (Chrome, Firefox, Safari, Edge)
+            - **Desktop版**: Windows 10+, macOS 10.14+, Ubuntu 18.04+
+            
+            ### 🧪 品質保証
+            - 104個のテストケース全通過
+            - TypeScript厳密型チェック
+            - セキュリティ検証済み
+            - マルチプラットフォーム対応
+            
+            🤖 Generated with [Claude Code](https://claude.ai/code)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

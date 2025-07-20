@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+このファイルは、このリポジトリでコードを扱う際のClaude Code (claude.ai/code) への指針を提供します。
+
 # ななたうノベルゲーム開発ルール
 
 ## 🎯 プロジェクト概要
@@ -33,17 +37,114 @@ npm run validate       # 全チェック実行（TypeScript + Lint + Format + Te
 # 統合コマンド
 npm run check          # Biome統合チェック
 npm run check:fix      # Biome統合修正
+
+# プラットフォーム別ビルド
+npm run build:web      # Web版ビルド
+npm run build:electron # Electronデスクトップ版ビルド
+npm run electron:dev   # Electron開発モード
+npm run cap:sync       # Capacitorモバイル版同期
+npm run mobile:ios     # iOS版実行
+npm run mobile:android # Android版実行
 ```
 
 ## 📁 ディレクトリ構造
 ```
 /
 ├── planning/          # 開発計画・タスク管理
+│   ├── current-tasks.md        # 現在のタスクリスト
+│   ├── development-plan.md     # 全体開発計画
+│   └── platform-deployment.md # プラットフォーム展開計画
 ├── src/              # ソースコード
-├── assets/           # ゲームアセット
+│   ├── core/         # コアシステム（StoryEngine、GameStateManager等）
+│   ├── ui/           # UIシステム（メニュー、設定画面等）
+│   ├── types/        # TypeScript型定義
+│   └── main.ts       # アプリケーションエントリーポイント
+├── scenario/         # シナリオファイル（.txt形式）
+├── electron/         # Electronデスクトップ版設定
 ├── public/           # 公開ファイル
-└── docs/             # ドキュメント
+└── assets/           # ゲームアセット（音声、画像等）
 ```
+
+## 🏗️ アーキテクチャ概要
+
+### コアシステム (`src/core/`)
+- **StoryEngine**: シーン管理とストーリー進行の制御
+- **GameStateManager**: ゲーム状態（変数、フラグ、進行状況）の管理
+- **ScenarioParser**: `.txt`シナリオファイルの解析とデータ変換
+- **AudioSystem**: BGM・効果音・ボイスの再生管理
+- **SaveLoadSystem**: セーブ・ロードデータの永続化
+- **AssetManager**: 画像・音声アセットの読み込みと管理
+- **ChoiceSystem**: プレイヤー選択肢の処理とルート分岐
+- **TextDisplaySystem**: リッチテキスト表示とタイプライター効果
+
+### UIシステム (`src/ui/`)
+- **UIStateManager**: UI状態の管理とナビゲーション
+- **MainMenuSystem**: メインメニューの実装
+- **GameMenuSystem**: ゲーム内メニュー（履歴、設定等）
+- **SaveLoadMenuSystem**: セーブ・ロード画面
+- **SettingsSystem**: 各種設定（音量、表示設定等）
+
+### マルチプラットフォーム対応
+- **Web版**: Vite + TypeScript（優先プラットフォーム）
+- **Desktop版**: Electron（セキュアな設定済み）
+- **Mobile版**: Capacitor/Ionic（iOS/Android対応）
+
+## 📦 使用ライブラリ・テクノロジースタック
+
+### メインエンジン・ライブラリ
+- **@drincs/pixi-vn**: ビジュアルノベル専用エンジン（TypeScript/JavaScript）
+- **pixi.js**: 高性能2Dレンダリングライブラリ
+- **TypeScript**: 型安全なJavaScript開発
+
+### 🚨 重要：@drincs/pixi-vn使用ルール
+**@drincs/pixi-vnに関する作業を行う前に、必ずMCP context7を使用して最新の仕様書を参照すること**
+
+```bash
+# @drincs/pixi-vnの作業前に必須実行
+mcp context7 "@drincs/pixi-vn documentation"
+```
+
+- **API変更**: @drincs/pixi-vnは頻繁にアップデートされるため、最新仕様の確認が必須
+- **メソッド名・パラメータ**: 仕様書で正確な関数名、引数、戻り値を確認
+- **新機能**: 最新バージョンで追加された機能を把握
+- **非推奨API**: 廃止予定のAPIを避け、推奨される新しいAPIを使用
+- **実装パターン**: 公式推奨の実装パターンに従う
+
+**作業手順**:
+1. MCP context7で@drincs/pixi-vn仕様書を確認
+2. 必要なAPI・メソッドの正確な使用方法を把握
+3. 実装コードを書く
+4. テスト実行で動作確認
+
+### 開発・ビルドツール
+- **Vite**: 高速ビルドツール・開発サーバー
+- **@biomejs/biome**: 高速リンター・フォーマッター（ESLint + Prettier代替）
+- **Vitest**: テストフレームワーク
+- **Husky**: Gitフック管理
+- **Terser**: JavaScript圧縮・最適化
+
+### プラットフォーム対応
+- **Electron**: デスクトップアプリケーション
+  - `electron-builder`: パッケージング・配布
+  - `concurrently`: 複数プロセス並行実行
+  - `wait-on`: プロセス待機
+- **Capacitor**: モバイルアプリケーション
+  - `@capacitor/core`: コア機能
+  - `@capacitor/cli`: CLI ツール
+  - `@capacitor/ios`: iOS対応
+  - `@capacitor/android`: Android対応
+
+### TypeScript設定
+- 厳密な型チェック有効（`strict: true`）
+- `noImplicitAny`, `strictNullChecks` 等すべて有効
+- パスマッピング設定（`@/*` → `src/*`）
+
+### 重要な設定ファイル
+- `tsconfig.json`: TypeScript厳密設定
+- `biome.json`: リンター・フォーマッター設定
+- `vite.config.ts`: ビルド・開発サーバー設定
+- `capacitor.config.ts`: モバイル版設定
+- `package.json`: 全コマンド・依存関係定義
 
 ## 🎮 ゲーム仕様
 - **ジャンル**: ビジュアルノベル
@@ -73,6 +174,9 @@ npm run check:fix      # Biome統合修正
 4. **品質チェック**: 実装後は必ず `npm run validate` を実行
 5. **コミット**: 作業完了後は必ずコミット・プッシュを実行
 6. **テスト**: 機能実装後は必ずテスト実行
+7. **タスク管理ファイル更新**: 作業完了後は必ず以下のファイルを更新
+   - `.kiro/specs/novel-game/tasks.md` (存在する場合)
+   - `planning/current-tasks.md`
 
 ## 🔒 セキュリティ・設定値ルール
 ### **🚨 最重要**: ハードコードの完全禁止
