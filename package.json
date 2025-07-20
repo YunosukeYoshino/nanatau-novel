@@ -69,6 +69,7 @@
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
     "@capacitor/ios": "^7.4.2",
+    "@playwright/test": "^1.54.1",
     "@rollup/plugin-replace": "^6.0.2",
     "concurrently": "^9.2.0",
     "electron": "^37.2.3",
