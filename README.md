@@ -1,35 +1,101 @@
-# ななたう - 硝子の心、たう（届く）まで
+# ななたう（硝子の心、たう（届く）まで）
 
-🌸 TypeScript製ビジュアルノベルゲーム - Pixi'VNエンジン使用
+🎮 **ビジュアルノベルゲーム** - 美しい物語と感動的な体験
 
-## 📖 ストーリー
+## 🌐 ライブデモ
 
-舞台は広島県宇品。港を見下ろす丘の上の廃教会にある一枚の「ステンドグラス」に宿った、主人公との果たされなかった約束の記憶そのもの、それがヒロイン「ななたう」。
+**▶️ [今すぐプレイ（Web版）](https://yunosukeyoshino.github.io/nanatau-novel/)**
 
-二人の間には常に「ガラス」という絶対的な境界が存在し、決して触れ合うことはできない。主人公が失われた記憶を取り戻すほど、ステンドグラスにはヒビが入り、彼女の存在が壊れていく。
+ブラウザで直接プレイできます！インストール不要です。
 
-「君を想うほど、君という世界が壊れていく」
+## 📖 ゲーム概要
 
-この切ないジレンマの中で、主人公の想いが彼女に「たう（届く）」のかを描く、ひと夏の恋と奇跡の物語。
+### 🎭 ストーリー
+- **ジャンル**: 恋愛・奇跡・記憶
+- **舞台**: 広島県宇品
+- **テーマ**: 硝子の心、届く想い
+- **特徴**: 複数エンディング、選択肢による分岐
 
-## 🎮 ゲーム仕様
+### 🎨 アートディレクション
+- **色調**: 温かみのある色彩、ステンドグラス風
+- **雰囲気**: 切ない、美しい、幻想的
+- **キーアイテム**: ステンドグラス、ガラス細工、菜の花
 
-- **ジャンル**: ビジュアルノベル
-- **テーマ**: 恋愛・奇跡・記憶
-- **舞台**: 広島県宇品（港町）
-- **プラットフォーム**: Web → Desktop → Mobile
-- **エンジン**: Pixi'VN (TypeScript/JavaScript)
+## 💻 プラットフォーム
 
-## 🚀 クイックスタート
+### 🌐 Web版（推奨）
+- **対応ブラウザ**: Chrome, Firefox, Safari, Edge
+- **アクセス**: [yunosukeyoshino.github.io/nanatau-novel](https://yunosukeyoshino.github.io/nanatau-novel/)
+- **特徴**: インストール不要、自動アップデート
 
-### 必要な環境
-- Node.js 18以上
-- npm または yarn
+### 🖥️ Desktop版
+- **対応OS**: Windows 10+, macOS 10.14+, Ubuntu 18.04+
+- **配布**: [GitHub Releases](https://github.com/YunosukeYoshino/nanatau-novel/releases)
+- **特徴**: オフライン実行、ネイティブ体験
 
-### インストール・実行
+### 📱 Mobile版（開発中）
+- **対応OS**: iOS, Android
+- **配布**: App Store / Google Play Store（予定）
+- **特徴**: タッチ操作最適化
 
+## 🚀 技術仕様
+
+### エンジン・フレームワーク
+- **ゲームエンジン**: [Pixi'VN](https://pixivn.io/) (TypeScript/JavaScript)
+- **レンダリング**: PIXI.js 2Dレンダリング
+- **言語**: TypeScript + Strict Mode
+- **ビルドツール**: Vite
+
+### アーキテクチャ
+- **Web**: Vite + TypeScript
+- **Desktop**: Electron
+- **Mobile**: Capacitor/Ionic
+- **品質管理**: Biome (ESLint + Prettier)
+- **テスト**: Vitest (104 テストケース)
+
+### CI/CD
+- **自動化**: GitHub Actions
+- **デプロイ**: GitHub Pages
+- **品質チェック**: TypeScript, Biome, Test
+- **リリース**: Multi-platform自動ビルド
+
+## 🎮 ゲーム機能
+
+### ✨ 基本機能
+- 📖 リッチテキスト表示・タイプライター効果
+- 🎭 キャラクター立ち絵・表情変化
+- 🖼️ 背景表示・トランジション効果
+- 🎵 BGM・効果音・ボイス
+- 💾 セーブ・ロード機能（20スロット）
+- 🔀 選択肢システム・分岐ルート
+
+### 🎛️ UI/UX
+- 🏠 メインメニュー・タイトル画面
+- ⚙️ 設定画面（音量、表示設定）
+- 📊 ゲーム進行状況表示
+- 📝 履歴・テキストログ
+- 🎨 レスポンシブ対応
+
+## 📥 ダウンロード・プレイ方法
+
+### 🌐 Web版（推奨）
+1. [ライブデモ](https://yunosukeyoshino.github.io/nanatau-novel/)にアクセス
+2. ブラウザで直接プレイ開始
+
+### 🖥️ Desktop版
+1. [Releases](https://github.com/YunosukeYoshino/nanatau-novel/releases)から最新版をダウンロード
+2. OS対応ファイルを選択（Windows, macOS, Linux）
+3. インストール・実行
+
+## 🛠️ 開発環境セットアップ
+
+### 前提条件
+- Node.js 18.x または 20.x
+- npm または bun
+
+### セットアップ
 ```bash
-# リポジトリをクローン
+# リポジトリクローン
 git clone https://github.com/YunosukeYoshino/nanatau-novel.git
 cd nanatau-novel
 
@@ -39,133 +105,66 @@ npm install
 # 開発サーバー起動
 npm run dev
 
-# ブラウザで http://localhost:5173 を開く
+# ブラウザでアクセス
+open http://localhost:5173
 ```
 
-## 🛠️ 開発コマンド
-
-### 基本開発
+### 開発コマンド
 ```bash
-npm run dev          # 開発サーバー起動
-npm run build        # プロダクションビルド
-npm run preview      # ビルド確認
-```
+# 開発サーバー起動
+npm run dev
 
-### テスト・品質チェック
-```bash
-npm run test         # テスト実行（watch mode）
-npm run test:run     # テスト実行（一回のみ）
-npm run typecheck    # TypeScript型チェック
-npm run lint         # Biomeリンター
-npm run format       # フォーマット適用
-npm run validate     # 全品質チェック実行
-```
-
-### プラットフォーム別ビルド
-```bash
-# Web版
+# ビルド（Web版）
 npm run build:web
 
-# Desktop版（Electron）
+# ビルド（Desktop版）
 npm run build:electron
-npm run electron:dev
 
-# Mobile版（Capacitor）
-npm run cap:sync
-npm run mobile:ios
-npm run mobile:android
+# テスト実行
+npm run test
+
+# 品質チェック
+npm run validate
+
+# プレビュー
+npm run preview
 ```
 
-## 📦 技術スタック
+## 📋 開発フェーズ
 
-### メインライブラリ
-- **@drincs/pixi-vn** - ビジュアルノベル専用エンジン
-- **pixi.js** - 高性能2Dレンダリング
-- **TypeScript** - 型安全な開発
+### ✅ 完了フェーズ
+- [x] **Phase 1**: 基盤構築・環境セットアップ
+- [x] **Phase 2**: キャラクター・ストーリー設計
+- [x] **Phase 3**: アセット準備
+- [x] **Phase 4**: ゲーム機能実装
+- [x] **Phase 5**: UI/UX実装
+- [x] **Phase 6**: テスト・デバッグ
+- [x] **Phase 7**: マルチプラットフォーム対応
 
-### 開発ツール
-- **Vite** - 高速ビルドツール
-- **Biome** - 高速リンター・フォーマッター
-- **Vitest** - テストフレームワーク
-- **Husky** - Gitフック管理
+### 🔄 現在フェーズ
+- [x] **Phase 8.1**: CI/CD環境構築 ✅
+- [ ] **Phase 8.2**: Web版デプロイ環境準備
+- [ ] **Phase 8.3**: Desktop版パッケージ化
+- [ ] **Phase 8.4**: Mobile版ストア申請準備
 
-### プラットフォーム対応
-- **Electron** - デスクトップアプリ
-- **Capacitor** - モバイルアプリ（iOS/Android）
+## 🤝 貢献・フィードバック
 
-## 🏗️ プロジェクト構成
+### バグ報告・機能要望
+- [Issues](https://github.com/YunosukeYoshino/nanatau-novel/issues)
+- [Pull Requests](https://github.com/YunosukeYoshino/nanatau-novel/pulls)
 
-```
-/
-├── src/                    # ソースコード
-│   ├── core/              # コアシステム
-│   │   ├── StoryEngine.ts     # ストーリー進行制御
-│   │   ├── GameStateManager.ts # ゲーム状態管理
-│   │   ├── ScenarioParser.ts   # シナリオ解析
-│   │   └── ...
-│   ├── ui/                # UIシステム
-│   ├── types/             # TypeScript型定義
-│   └── main.ts            # エントリーポイント
-├── scenario/              # シナリオファイル
-├── planning/              # 開発計画・タスク管理
-├── electron/              # Electron設定
-└── public/                # 静的ファイル
-```
-
-## 📋 開発ステータス
-
-- **Phase 1-7**: ✅ 完了（基盤〜マルチプラットフォーム対応）
-- **Phase 8**: 🔄 進行中（配布・リリース準備）
-- **全体進捗**: 78% (8フェーズ中7.8フェーズ完了)
-
-### 実装済み機能
-- ✅ シナリオパーサー（.txtファイル対応）
-- ✅ ストーリーエンジン・状態管理
-- ✅ テキスト表示・選択肢システム
-- ✅ セーブ・ロードシステム
-- ✅ 音声・BGMシステム
-- ✅ UI/UXシステム（メニュー、設定等）
-- ✅ マルチプラットフォーム対応
-- ✅ 包括的テストスイート（104テスト成功）
-
-## 🔧 開発ルール
-
-### 品質保証
-- TypeScript厳密設定（`strict: true`）
-- `any`型使用禁止
-- 必須：`npm run validate`通過
-- pre-commitフックによる自動チェック
-
-### Git ワークフロー
-- ブランチ必須（`feature/`, `fix/`, `docs/`等）
-- 作業完了後は必ずコミット・プッシュ
-- プルリクエスト作成必須
-
-### セキュリティ
-- ハードコード完全禁止
-- 環境変数による設定管理
-- 入力値検証・データ検証実装済み
-
-## 📄 ライセンス
-
+### ライセンス
 ISC License
 
-## 🤝 コントリビューション
+## 📊 プロジェクト統計
 
-1. このリポジトリをフォーク
-2. 機能ブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'feat: add amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
-
-## 🔗 関連リンク
-
-- [開発計画書](./planning/development-plan.md)
-- [現在のタスク](./planning/current-tasks.md)
-- [シナリオ詳細](./plan.md)
-- [Claude Code開発ルール](./CLAUDE.md)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/YunosukeYoshino/nanatau-novel)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/YunosukeYoshino/nanatau-novel/ci.yml)
+![GitHub deployments](https://img.shields.io/github/deployments/YunosukeYoshino/nanatau-novel/github-pages)
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/YunosukeYoshino/nanatau-novel)
 
 ---
 
-*「君を想うほど、君という世界が壊れていく」*  
-*- ななたう - 硝子の心、たう（届く）まで -*
+💝 **「硝子の心、たう（届く）まで」** - 美しい物語をお楽しみください
+
+🤖 *Powered by [Claude Code](https://claude.ai/code)*

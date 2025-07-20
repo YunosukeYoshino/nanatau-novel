@@ -174,6 +174,9 @@ mcp context7 "@drincs/pixi-vn documentation"
 4. **品質チェック**: 実装後は必ず `npm run validate` を実行
 5. **コミット**: 作業完了後は必ずコミット・プッシュを実行
 6. **テスト**: 機能実装後は必ずテスト実行
+7. **タスク管理ファイル更新**: 作業完了後は必ず以下のファイルを更新
+   - `.kiro/specs/novel-game/tasks.md` (存在する場合)
+   - `planning/current-tasks.md`
 
 ## 🔒 セキュリティ・設定値ルール
 ### **🚨 最重要**: ハードコードの完全禁止
