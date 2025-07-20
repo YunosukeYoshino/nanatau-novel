@@ -234,22 +234,133 @@ app.on('web-contents-created', (event, contents) => {
 app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor');
 
 /**
+ * セキュリティ: 入力値検証とサニタイゼーション
+ */
+function validateSlotId(slotId) {
+  if (!slotId || typeof slotId !== 'string') {
+    return null;
+  }
+  
+  // 安全な文字のみ許可: 英数字、ハイフン、アンダースコア
+  const sanitized = slotId.replace(/[^a-zA-Z0-9\-_]/g, '');
+  
+  // 長さ制限 (最大32文字)
+  if (sanitized.length === 0 || sanitized.length > 32) {
+    return null;
+  }
+  
+  // パストラバーサル攻撃を防ぐため、特定の文字列を拒否
+  const dangerousPatterns = ['.', '/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+  for (const pattern of dangerousPatterns) {
+    if (sanitized.includes(pattern)) {
+      return null;
+    }
+  }
+  
+  return sanitized;
+}
+
+function validateSettings(settings) {
+  if (!settings || typeof settings !== 'object') {
+    return { isValid: false, error: 'Settings must be an object' };
+  }
+
+  // 必須プロパティの検証
+  const requiredSchema = {
+    volume: {
+      master: 'number',
+      bgm: 'number',
+      se: 'number',
+      voice: 'number'
+    },
+    display: {
+      fullscreen: 'boolean',
+      autoSave: 'boolean'
+    },
+    controls: {
+      autoAdvance: 'boolean',
+      skipSpeed: 'number'
+    }
+  };
+
+  function validateObject(obj, schema, path = '') {
+    for (const [key, expectedType] of Object.entries(schema)) {
+      const currentPath = path ? `${path}.${key}` : key;
+      
+      if (!(key in obj)) {
+        return { isValid: false, error: `Missing required property: ${currentPath}` };
+      }
+
+      if (typeof expectedType === 'object') {
+        if (typeof obj[key] !== 'object' || obj[key] === null) {
+          return { isValid: false, error: `Property ${currentPath} must be an object` };
+        }
+        const nestedResult = validateObject(obj[key], expectedType, currentPath);
+        if (!nestedResult.isValid) {
+          return nestedResult;
+        }
+      } else {
+        if (typeof obj[key] !== expectedType) {
+          return { isValid: false, error: `Property ${currentPath} must be of type ${expectedType}` };
+        }
+        
+        // 数値の範囲検証
+        if (expectedType === 'number') {
+          if (key.includes('volume') || key === 'skipSpeed') {
+            if (obj[key] < 0 || obj[key] > 2) {
+              return { isValid: false, error: `Property ${currentPath} must be between 0 and 2` };
+            }
+          }
+        }
+      }
+    }
+    return { isValid: true };
+  }
+
+  return validateObject(settings, requiredSchema);
+}
+
+/**
  * IPCハンドラーの設定
  */
 function setupIpcHandlers() {
   // ゲームデータのセーブ・ロード
   ipcMain.handle('save-game-data', async (event, data) => {
     try {
+      // 入力値検証
+      if (!data || typeof data !== 'object') {
+        return { success: false, error: 'Invalid game data: must be an object' };
+      }
+
+      // slotId検証とサニタイゼーション
+      const rawSlotId = data.slotId || 'quicksave';
+      const sanitizedSlotId = validateSlotId(rawSlotId);
+      
+      if (!sanitizedSlotId) {
+        return { 
+          success: false, 
+          error: 'Invalid slot ID: must contain only alphanumeric characters, hyphens, and underscores (max 32 chars)' 
+        };
+      }
+
       const userDataPath = app.getPath('userData');
       const savePath = path.join(userDataPath, 'saves');
       
       // セーブディレクトリが存在しない場合は作成
       await fs.mkdir(savePath, { recursive: true });
       
-      const filePath = path.join(savePath, `${data.slotId || 'quicksave'}.json`);
-      await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+      // サニタイズされたslotIdを使用
+      const filePath = path.join(savePath, `${sanitizedSlotId}.json`);
       
-      return { success: true, path: filePath };
+      // データのサイズ制限 (10MB)
+      const dataString = JSON.stringify(data, null, 2);
+      if (dataString.length > 10 * 1024 * 1024) {
+        return { success: false, error: 'Game data too large (max 10MB)' };
+      }
+      
+      await fs.writeFile(filePath, dataString, 'utf8');
+      
+      return { success: true, path: filePath, sanitizedSlotId };
     } catch (error) {
       console.error('Failed to save game data:', error);
       return { success: false, error: error.message };
@@ -258,11 +369,30 @@ function setupIpcHandlers() {
 
   ipcMain.handle('load-game-data', async (event, slotId) => {
     try {
+      // slotId検証とサニタイゼーション
+      const rawSlotId = slotId || 'quicksave';
+      const sanitizedSlotId = validateSlotId(rawSlotId);
+      
+      if (!sanitizedSlotId) {
+        return { 
+          success: false, 
+          error: 'Invalid slot ID: must contain only alphanumeric characters, hyphens, and underscores (max 32 chars)' 
+        };
+      }
+
       const userDataPath = app.getPath('userData');
-      const filePath = path.join(userDataPath, 'saves', `${slotId || 'quicksave'}.json`);
+      const filePath = path.join(userDataPath, 'saves', `${sanitizedSlotId}.json`);
+      
+      // ファイルサイズ確認
+      const stats = await fs.stat(filePath);
+      if (stats.size > 10 * 1024 * 1024) { // 10MB制限
+        return { success: false, error: 'Save file too large' };
+      }
       
       const data = await fs.readFile(filePath, 'utf8');
-      return { success: true, data: JSON.parse(data) };
+      const parsedData = JSON.parse(data);
+      
+      return { success: true, data: parsedData };
     } catch (error) {
       console.error('Failed to load game data:', error);
       return { success: false, error: error.message };
@@ -272,10 +402,25 @@ function setupIpcHandlers() {
   // 設定データのセーブ・ロード
   ipcMain.handle('save-settings', async (event, settings) => {
     try {
+      // 設定データの検証
+      const validation = validateSettings(settings);
+      if (!validation.isValid) {
+        return { 
+          success: false, 
+          error: `Invalid settings data: ${validation.error}` 
+        };
+      }
+
       const userDataPath = app.getPath('userData');
       const filePath = path.join(userDataPath, 'settings.json');
       
-      await fs.writeFile(filePath, JSON.stringify(settings, null, 2), 'utf8');
+      // データのサイズ制限 (1MB)
+      const dataString = JSON.stringify(settings, null, 2);
+      if (dataString.length > 1024 * 1024) {
+        return { success: false, error: 'Settings data too large (max 1MB)' };
+      }
+      
+      await fs.writeFile(filePath, dataString, 'utf8');
       return { success: true };
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -288,10 +433,27 @@ function setupIpcHandlers() {
       const userDataPath = app.getPath('userData');
       const filePath = path.join(userDataPath, 'settings.json');
       
+      // ファイルサイズ確認
+      const stats = await fs.stat(filePath);
+      if (stats.size > 1024 * 1024) { // 1MB制限
+        console.warn('Settings file too large, using defaults');
+        throw new Error('Settings file too large');
+      }
+      
       const data = await fs.readFile(filePath, 'utf8');
-      return { success: true, settings: JSON.parse(data) };
+      const parsedSettings = JSON.parse(data);
+      
+      // 読み込んだ設定の検証
+      const validation = validateSettings(parsedSettings);
+      if (!validation.isValid) {
+        console.warn('Invalid settings file, using defaults:', validation.error);
+        throw new Error('Invalid settings format');
+      }
+      
+      return { success: true, settings: parsedSettings };
     } catch (error) {
-      // 設定ファイルが存在しない場合はデフォルト設定を返す
+      // 設定ファイルが存在しない場合や無効な場合はデフォルト設定を返す
+      console.log('Loading default settings due to error:', error.message);
       return { 
         success: true, 
         settings: {
