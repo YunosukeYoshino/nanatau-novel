@@ -10,15 +10,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     electron: process.versions.electron,
   },
 
-  // メニューからのイベントリスナー
+  // メニューからのイベントリスナー（クリーンアップ関数付き）
   onMenuNewGame: (callback) => {
     ipcRenderer.on('menu-new-game', callback);
+    return () => ipcRenderer.removeListener('menu-new-game', callback);
   },
   onMenuLoadGame: (callback) => {
     ipcRenderer.on('menu-load-game', callback);
+    return () => ipcRenderer.removeListener('menu-load-game', callback);
   },
   onMenuSaveGame: (callback) => {
     ipcRenderer.on('menu-save-game', callback);
+    return () => ipcRenderer.removeListener('menu-save-game', callback);
   },
 
   // ファイルシステム操作（ゲームセーブ用）

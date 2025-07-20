@@ -32,6 +32,7 @@ export interface AssetItem {
   loaded?: boolean;
   error?: Error | undefined;
   element?: HTMLImageElement | HTMLAudioElement | HTMLVideoElement | undefined;
+  fontFamily?: string; // フォント用のファミリー名
 }
 
 export class AssetManager {
@@ -202,7 +203,7 @@ export class AssetManager {
           asset.element = await this.loadVideo(fullUrl);
           break;
         case "font":
-          await this.loadFont(fullUrl);
+          await this.loadFont(fullUrl, asset.fontFamily || "CustomFont");
           break;
         default:
           throw new Error(`Unsupported asset type: ${asset.type}`);
@@ -212,13 +213,20 @@ export class AssetManager {
       asset.error = undefined;
       this.assets.set(asset.id, asset);
 
-      console.log(`Asset loaded: ${asset.id}`);
+      // 開発環境でのみログ出力
+      if (process.env["NODE_ENV"] === "development") {
+        console.log(`Asset loaded: ${asset.id}`);
+      }
       return asset;
     } catch (error) {
       asset.error = error instanceof Error ? error : new Error(String(error));
       asset.loaded = false;
       this.assets.set(asset.id, asset);
-      console.error(`Failed to load asset: ${asset.id}`, error);
+
+      // 開発環境でのみログ出力
+      if (process.env["NODE_ENV"] === "development") {
+        console.error(`Failed to load asset: ${asset.id}`, error);
+      }
       throw error;
     }
   }
@@ -293,8 +301,8 @@ export class AssetManager {
   /**
    * フォントを読み込み
    */
-  private async loadFont(url: string): Promise<void> {
-    const fontFace = new FontFace("CustomFont", `url(${url})`);
+  private async loadFont(url: string, fontFamily: string): Promise<void> {
+    const fontFace = new FontFace(fontFamily, `url(${url})`);
     await fontFace.load();
     document.fonts.add(fontFace);
   }

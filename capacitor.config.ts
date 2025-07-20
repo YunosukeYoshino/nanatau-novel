@@ -42,7 +42,7 @@ const config: CapacitorConfig = {
     allowsLinkPreview: false,
   },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
   },

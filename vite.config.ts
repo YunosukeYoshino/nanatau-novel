@@ -7,7 +7,7 @@ export default defineConfig({
         outDir: 'dist',
         sourcemap: true,
         minify: 'terser',
-        target: ['es2020', 'chrome70', 'firefox70', 'safari13'],
+        target: ['es2019', 'chrome70', 'firefox70', 'safari13'],
         rollupOptions: {
             input: {
                 main: './index.html',
