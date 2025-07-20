@@ -23,7 +23,7 @@ interface GameState {
   playerName: string;
   visitedScenes: Set<string>;
   gameFlags: Record<string, boolean>;
-  chosenRoute: 'A' | 'B' | null;
+  chosenRoute: "A" | "B" | null;
 }
 
 // Window型拡張
@@ -37,9 +37,9 @@ declare global {
 
 // ゲーム状態
 const gameState: GameState = {
-  currentChapter: '00_prologue',
+  currentChapter: "00_prologue",
   currentSceneIndex: 0,
-  playerName: 'ゆうくん',
+  playerName: "ゆうくん",
   visitedScenes: new Set(),
   gameFlags: {},
   chosenRoute: null,
@@ -132,12 +132,14 @@ function createGameUI(): HTMLElement {
 
   continueButton.addEventListener("mouseenter", () => {
     continueButton.style.transform = "scale(1.05)";
-    continueButton.style.background = "linear-gradient(45deg, #5CBF60, #4CAF50)";
+    continueButton.style.background =
+      "linear-gradient(45deg, #5CBF60, #4CAF50)";
   });
 
   continueButton.addEventListener("mouseleave", () => {
     continueButton.style.transform = "scale(1)";
-    continueButton.style.background = "linear-gradient(45deg, #4CAF50, #45a049)";
+    continueButton.style.background =
+      "linear-gradient(45deg, #4CAF50, #45a049)";
   });
 
   dialogueContainer.appendChild(characterName);
@@ -159,7 +161,7 @@ async function loadScenarioFile(filename: string): Promise<any> {
     if (!response.ok) {
       throw new Error(`Failed to load scenario: ${filename}`);
     }
-    
+
     const content = await response.text();
     const scenarioData = parser.parseScenarioFile(content);
     scenarioCache.set(filename, scenarioData);
@@ -183,7 +185,7 @@ function updateDialogueDisplay(scene: any): void {
   // キャラクター名の表示
   if (scene.character?.trim()) {
     let displayName = scene.character;
-    
+
     // 特別なキャラクター名の変換
     if (scene.character === "主人公") {
       displayName = gameState.playerName;
@@ -213,7 +215,11 @@ function updateDialogueDisplay(scene: any): void {
 }
 
 // タイプライター効果
-function typewriterEffect(element: HTMLElement, text: string, speed: number = 50): void {
+function typewriterEffect(
+  element: HTMLElement,
+  text: string,
+  speed: number = 50
+): void {
   element.textContent = "";
   let index = 0;
 
@@ -232,11 +238,11 @@ function typewriterEffect(element: HTMLElement, text: string, speed: number = 50
 async function nextScene(): Promise<void> {
   try {
     const currentScenario = await loadScenarioFile(gameState.currentChapter);
-    
+
     if (gameState.currentSceneIndex < currentScenario.scenes.length - 1) {
       gameState.currentSceneIndex++;
       const scene = currentScenario.scenes[gameState.currentSceneIndex];
-      
+
       // シーンタイプに応じた処理
       if (scene.type === "choice") {
         await handleChoiceScene(scene);
@@ -258,7 +264,7 @@ async function nextScene(): Promise<void> {
 async function handleDialogueScene(scene: any): Promise<void> {
   // 訪問済みシーンに追加
   gameState.visitedScenes.add(scene.id);
-  
+
   // ディレクティブの処理
   if (scene.directives && scene.directives.length > 0) {
     for (const directive of scene.directives) {
@@ -292,7 +298,10 @@ async function handleChoiceScene(scene: any): Promise<void> {
   }
 
   // 第3章の最後の選択肢かチェック
-  if (gameState.currentChapter === "03_chapter_three" && scene.choices.length === 2) {
+  if (
+    gameState.currentChapter === "03_chapter_three" &&
+    scene.choices.length === 2
+  ) {
     // ルート分岐の選択肢
     await showRouteBranchChoice(scene.choices);
   } else {
@@ -353,7 +362,7 @@ async function showRouteBranchChoice(choices: any[]): Promise<void> {
   // 選択肢ボタンを作成
   choices.forEach((choice, index) => {
     const button = document.createElement("button");
-    
+
     if (index === 0) {
       // ルートA: 別れのルート
       button.textContent = "💔 ななたうを解放する";
@@ -389,9 +398,9 @@ async function showRouteBranchChoice(choices: any[]): Promise<void> {
 
     button.addEventListener("click", () => {
       // ルート選択を保存
-      gameState.chosenRoute = index === 0 ? 'A' : 'B';
+      gameState.chosenRoute = index === 0 ? "A" : "B";
       document.body.removeChild(modal);
-      
+
       // 選択したルートに移行
       loadRouteChapter();
     });
@@ -496,12 +505,15 @@ async function showCharacter(characterName: string): Promise<void> {
       await canvas.add("nanatau", nanatauSprite);
 
       // ななたうにアニメーション効果を追加
-      canvas.addTicker("nanatau", new ZoomTicker({
-        type: "zoom",
-        limit: 1.1,
-        speed: 30,
-        clockwise: true,
-      }));
+      canvas.addTicker(
+        "nanatau",
+        new ZoomTicker({
+          type: "zoom",
+          limit: 1.1,
+          speed: 30,
+          clockwise: true,
+        })
+      );
     }
     console.log(`Character shown: ${characterName}`);
   } catch (error) {
@@ -514,18 +526,24 @@ async function applyEffect(effectName: string): Promise<void> {
   try {
     if (effectName.includes("ズーム") || effectName.includes("zoom")) {
       // ズーム効果
-      canvas.addTicker("background", new ZoomTicker({
-        type: "zoom",
-        limit: 1.2,
-        speed: 50,
-        clockwise: true,
-      }));
+      canvas.addTicker(
+        "background",
+        new ZoomTicker({
+          type: "zoom",
+          limit: 1.2,
+          speed: 50,
+          clockwise: true,
+        })
+      );
     } else if (effectName.includes("回転") || effectName.includes("rotate")) {
       // 回転効果
-      canvas.addTicker("background", new RotateTicker({
-        speed: 0.5,
-        clockwise: false,
-      }));
+      canvas.addTicker(
+        "background",
+        new RotateTicker({
+          speed: 0.5,
+          clockwise: false,
+        })
+      );
     }
     console.log(`Effect applied: ${effectName}`);
   } catch (error) {
@@ -537,20 +555,20 @@ async function applyEffect(effectName: string): Promise<void> {
 async function loadNextChapter(): Promise<void> {
   const chapterOrder = [
     "00_prologue",
-    "01_chapter_one", 
+    "01_chapter_one",
     "02_chapter_two",
-    "03_chapter_three"
+    "03_chapter_three",
   ];
 
   const currentIndex = chapterOrder.indexOf(gameState.currentChapter);
-  
+
   if (currentIndex < chapterOrder.length - 1) {
     gameState.currentChapter = chapterOrder[currentIndex + 1];
     gameState.currentSceneIndex = 0;
-    
+
     const nextScenario = await loadScenarioFile(gameState.currentChapter);
     const firstScene = nextScenario.scenes[0];
-    
+
     if (firstScene) {
       await handleDialogueScene(firstScene);
     }
@@ -565,16 +583,17 @@ async function loadNextChapter(): Promise<void> {
 // ルート章を読み込む
 async function loadRouteChapter(): Promise<void> {
   try {
-    const routeChapter = gameState.chosenRoute === 'A' ? 
-      "route_a/04_chapter_four_a" : 
-      "route_b/04_chapter_four_b";
-    
+    const routeChapter =
+      gameState.chosenRoute === "A"
+        ? "route_a/04_chapter_four_a"
+        : "route_b/04_chapter_four_b";
+
     gameState.currentChapter = routeChapter;
     gameState.currentSceneIndex = 0;
-    
+
     const routeScenario = await loadScenarioFile(routeChapter);
     const firstScene = routeScenario.scenes[0];
-    
+
     if (firstScene) {
       await handleDialogueScene(firstScene);
     }
@@ -647,7 +666,7 @@ async function initializeGame(): Promise<void> {
     // 最初のシナリオを読み込み
     const prologueScenario = await loadScenarioFile("00_prologue");
     const firstScene = prologueScenario.scenes[0];
-    
+
     if (firstScene) {
       await handleDialogueScene(firstScene);
     }
@@ -658,8 +677,9 @@ async function initializeGame(): Promise<void> {
     window.gameState = gameState;
 
     console.log("🎉 Game initialization completed successfully!");
-    console.log("ゲームが開始されました！続けるボタンをクリックしてゲームを進めてください。");
-    
+    console.log(
+      "ゲームが開始されました！続けるボタンをクリックしてゲームを進めてください。"
+    );
   } catch (error) {
     console.error("Game initialization failed:", error);
   }

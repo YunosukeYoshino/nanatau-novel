@@ -114,7 +114,9 @@ export class InputCollectionSystem {
     nameInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         const playerName = nameInput.value.trim();
-        InputCollectionSystem.handleNameInputConfirm(playerName || "プレイヤー");
+        InputCollectionSystem.handleNameInputConfirm(
+          playerName || "プレイヤー"
+        );
       }
     });
 

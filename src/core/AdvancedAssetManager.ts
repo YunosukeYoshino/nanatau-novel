@@ -38,7 +38,8 @@ export class AdvancedAssetManager {
   static async preloadAssets(assetList?: string[]): Promise<void> {
     console.log("Starting asset preloading...");
 
-    const assetsToLoad = assetList || AdvancedAssetManager.getDefaultPreloadList();
+    const assetsToLoad =
+      assetList || AdvancedAssetManager.getDefaultPreloadList();
 
     try {
       const loadPromises = assetsToLoad.map((assetId) =>
@@ -88,7 +89,10 @@ export class AdvancedAssetManager {
     }
 
     // 読み込み開始
-    const loadingPromise = AdvancedAssetManager.performAssetLoad(assetId, assetPath);
+    const loadingPromise = AdvancedAssetManager.performAssetLoad(
+      assetId,
+      assetPath
+    );
     AdvancedAssetManager.loadingPromises.set(assetId, loadingPromise);
 
     try {
@@ -106,7 +110,9 @@ export class AdvancedAssetManager {
 
   // アセットパスを検索
   private static findAssetPath(assetId: string): string | null {
-    for (const category of Object.values(AdvancedAssetManager.assetDefinitions)) {
+    for (const category of Object.values(
+      AdvancedAssetManager.assetDefinitions
+    )) {
       if ((category as any)[assetId]) {
         return (category as any)[assetId];
       }
@@ -180,7 +186,8 @@ export class AdvancedAssetManager {
       console.log(`Setting background: ${backgroundId}`);
 
       // アセットを読み込み
-      const backgroundImage = await AdvancedAssetManager.loadAsset(backgroundId);
+      const backgroundImage =
+        await AdvancedAssetManager.loadAsset(backgroundId);
       if (!backgroundImage) {
         console.warn(`Background asset not found: ${backgroundId}`);
         return false;

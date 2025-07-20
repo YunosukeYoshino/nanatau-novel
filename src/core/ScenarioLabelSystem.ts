@@ -218,7 +218,10 @@ export class ScenarioLabelSystem {
 
   // プロローグのラベルを作成
   static async createPrologueLabel(scenarioText: string) {
-    return ScenarioLabelSystem.createLabelFromScenario("prologue", scenarioText);
+    return ScenarioLabelSystem.createLabelFromScenario(
+      "prologue",
+      scenarioText
+    );
   }
 
   // 全てのシナリオファイルを読み込んでラベルを作成
