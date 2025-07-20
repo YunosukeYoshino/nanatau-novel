@@ -272,9 +272,7 @@ export class StoryEngine implements IStoryEngine {
    * 現在のゲーム状態を取得（統合テスト用）
    */
   getCurrentState(): GameState {
-    return {
-      ...this.gameState,
-    };
+    return JSON.parse(JSON.stringify(this.gameState));
   }
 
   /**

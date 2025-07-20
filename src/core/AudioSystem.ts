@@ -578,6 +578,7 @@ export class AudioSystem implements IAudioManager {
 
     // 全音声を停止
     await this.stopBGM();
+    await this.stopSE();
     await this.stopVoice();
 
     // トラックをクリア
