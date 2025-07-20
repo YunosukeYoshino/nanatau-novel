@@ -3,6 +3,21 @@
  * 画像・音声ファイルの最適化、プリロード、キャッシュ管理を行う
  */
 
+// 開発環境専用ログシステム
+const isDevelopment = process.env["NODE_ENV"] === "development";
+
+function devLog(message: string, ...args: unknown[]): void {
+  if (isDevelopment) {
+    console.log(`[AssetManager] ${message}`, ...args);
+  }
+}
+
+function devError(message: string, ...args: unknown[]): void {
+  if (isDevelopment) {
+    console.error(`[AssetManager] ${message}`, ...args);
+  }
+}
+
 export interface AssetConfig {
   /** アセットのベースURL */
   baseUrl: string;
@@ -202,9 +217,12 @@ export class AssetManager {
         case "video":
           asset.element = await this.loadVideo(fullUrl);
           break;
-        case "font":
-          await this.loadFont(fullUrl, asset.fontFamily || "CustomFont");
+        case "font": {
+          const fontFamily =
+            asset.fontFamily || this.generateFontName(asset.src);
+          await this.loadFont(fullUrl, fontFamily);
           break;
+        }
         default:
           throw new Error(`Unsupported asset type: ${asset.type}`);
       }
@@ -213,20 +231,14 @@ export class AssetManager {
       asset.error = undefined;
       this.assets.set(asset.id, asset);
 
-      // 開発環境でのみログ出力
-      if (process.env["NODE_ENV"] === "development") {
-        console.log(`Asset loaded: ${asset.id}`);
-      }
+      devLog(`Asset loaded: ${asset.id}`);
       return asset;
     } catch (error) {
       asset.error = error instanceof Error ? error : new Error(String(error));
       asset.loaded = false;
       this.assets.set(asset.id, asset);
 
-      // 開発環境でのみログ出力
-      if (process.env["NODE_ENV"] === "development") {
-        console.error(`Failed to load asset: ${asset.id}`, error);
-      }
+      devError(`Failed to load asset: ${asset.id}`, error);
       throw error;
     }
   }
@@ -241,13 +253,17 @@ export class AssetManager {
     return new Promise((resolve, reject) => {
       const img = new Image();
 
-      img.onload = () => {
-        // 必要に応じて画像最適化を実行
-        if (options?.maxWidth || options?.maxHeight || options?.format) {
-          const optimizedImg = this.optimizeImage(img, options);
-          resolve(optimizedImg);
-        } else {
-          resolve(img);
+      img.onload = async () => {
+        try {
+          // 必要に応じて画像最適化を実行
+          if (options?.maxWidth || options?.maxHeight || options?.format) {
+            const optimizedImg = await this.optimizeImage(img, options);
+            resolve(optimizedImg);
+          } else {
+            resolve(img);
+          }
+        } catch (error) {
+          reject(error);
         }
       };
 
@@ -308,38 +324,66 @@ export class AssetManager {
   }
 
   /**
-   * 画像最適化
+   * 画像最適化（メモリ効率重視版）
    */
   private optimizeImage(
     img: HTMLImageElement,
     options: AssetConfig["imageOptions"]
-  ): HTMLImageElement {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
+  ): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
 
-    if (!ctx) {
-      return img;
-    }
+      if (!ctx) {
+        resolve(img);
+        return;
+      }
 
-    // リサイズ計算
-    const { width, height } = this.calculateOptimalSize(
-      img.naturalWidth,
-      img.naturalHeight,
-      options?.maxWidth,
-      options?.maxHeight
-    );
+      // リサイズ計算
+      const { width, height } = this.calculateOptimalSize(
+        img.naturalWidth,
+        img.naturalHeight,
+        options?.maxWidth,
+        options?.maxHeight
+      );
 
-    canvas.width = width;
-    canvas.height = height;
-    ctx.drawImage(img, 0, 0, width, height);
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
 
-    // 最適化された画像を作成
-    const optimizedImg = new Image();
-    const quality = options?.quality || 0.8;
-    const format = options?.format || "jpeg";
+      // メモリ効率重視: canvas.toBlob() を使用
+      const quality = options?.quality || 0.8;
+      const format = options?.format || "jpeg";
+      const mimeType = `image/${format}`;
 
-    optimizedImg.src = canvas.toDataURL(`image/${format}`, quality);
-    return optimizedImg;
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Failed to create blob from canvas"));
+            return;
+          }
+
+          // メモリ効率重視: URL.createObjectURL() を使用
+          const optimizedImg = new Image();
+          const objectUrl = URL.createObjectURL(blob);
+
+          optimizedImg.onload = () => {
+            // 元のcanvasとURLを解放
+            URL.revokeObjectURL(objectUrl);
+            resolve(optimizedImg);
+          };
+
+          optimizedImg.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("Failed to load optimized image"));
+          };
+
+          optimizedImg.src = objectUrl;
+        },
+        mimeType,
+        quality
+      );
+    });
   }
 
   /**
@@ -365,6 +409,20 @@ export class AssetManager {
     }
 
     return { width: Math.round(width), height: Math.round(height) };
+  }
+
+  /**
+   * URLからフォント名を生成
+   */
+  private generateFontName(src: string): string {
+    // URLからファイル名を抽出
+    const fileName = src.split("/").pop() || "unknown";
+    // 拡張子を除去
+    const baseName = fileName.replace(/\.[^/.]+$/, "");
+    // フォント名として使用できる形式に変換（英数字とハイフンのみ）
+    const fontName = baseName.replace(/[^a-zA-Z0-9-]/g, "-");
+    // プリフィックス付きで一意性を確保
+    return `NanatauFont-${fontName}-${Date.now()}`;
   }
 
   /**

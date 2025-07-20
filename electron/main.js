@@ -1,5 +1,7 @@
-const { app, BrowserWindow, Menu, shell, dialog } = require('electron');
+const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs').promises;
+const os = require('os');
 const isDev = process.env.NODE_ENV === 'development';
 
 // メインウィンドウの参照を保持
@@ -202,6 +204,7 @@ function createMenu() {
 app.whenReady().then(() => {
   createWindow();
   createMenu();
+  setupIpcHandlers(); // IPCハンドラーの設定
 
   // macOSでは、ドックアイコンがクリックされた時にウィンドウを再作成
   app.on('activate', () => {
@@ -229,3 +232,125 @@ app.on('web-contents-created', (event, contents) => {
 
 // GPU不具合対策
 app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor');
+
+/**
+ * IPCハンドラーの設定
+ */
+function setupIpcHandlers() {
+  // ゲームデータのセーブ・ロード
+  ipcMain.handle('save-game-data', async (event, data) => {
+    try {
+      const userDataPath = app.getPath('userData');
+      const savePath = path.join(userDataPath, 'saves');
+      
+      // セーブディレクトリが存在しない場合は作成
+      await fs.mkdir(savePath, { recursive: true });
+      
+      const filePath = path.join(savePath, `${data.slotId || 'quicksave'}.json`);
+      await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+      
+      return { success: true, path: filePath };
+    } catch (error) {
+      console.error('Failed to save game data:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('load-game-data', async (event, slotId) => {
+    try {
+      const userDataPath = app.getPath('userData');
+      const filePath = path.join(userDataPath, 'saves', `${slotId || 'quicksave'}.json`);
+      
+      const data = await fs.readFile(filePath, 'utf8');
+      return { success: true, data: JSON.parse(data) };
+    } catch (error) {
+      console.error('Failed to load game data:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // 設定データのセーブ・ロード
+  ipcMain.handle('save-settings', async (event, settings) => {
+    try {
+      const userDataPath = app.getPath('userData');
+      const filePath = path.join(userDataPath, 'settings.json');
+      
+      await fs.writeFile(filePath, JSON.stringify(settings, null, 2), 'utf8');
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('load-settings', async (event) => {
+    try {
+      const userDataPath = app.getPath('userData');
+      const filePath = path.join(userDataPath, 'settings.json');
+      
+      const data = await fs.readFile(filePath, 'utf8');
+      return { success: true, settings: JSON.parse(data) };
+    } catch (error) {
+      // 設定ファイルが存在しない場合はデフォルト設定を返す
+      return { 
+        success: true, 
+        settings: {
+          volume: { master: 1.0, bgm: 0.8, se: 0.7, voice: 0.9 },
+          display: { fullscreen: false, autoSave: true },
+          controls: { autoAdvance: false, skipSpeed: 1.0 }
+        }
+      };
+    }
+  });
+
+  // アプリケーション情報取得
+  ipcMain.handle('get-app-version', async (event) => {
+    return {
+      version: app.getVersion(),
+      name: app.getName(),
+      platform: process.platform,
+      arch: process.arch,
+      electronVersion: process.versions.electron,
+      nodeVersion: process.versions.node
+    };
+  });
+
+  // ウィンドウ制御
+  ipcMain.on('minimize-window', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window) {
+      window.minimize();
+    }
+  });
+
+  ipcMain.on('maximize-window', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window) {
+      if (window.isMaximized()) {
+        window.unmaximize();
+      } else {
+        window.maximize();
+      }
+    }
+  });
+
+  ipcMain.on('close-window', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window) {
+      window.close();
+    }
+  });
+
+  // ファイルダイアログ
+  ipcMain.handle('show-save-dialog', async (event, options) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showSaveDialog(window, options);
+    return result;
+  });
+
+  ipcMain.handle('show-open-dialog', async (event, options) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showOpenDialog(window, options);
+    return result;
+  });
+}
