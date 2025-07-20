@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
     root: '.',
     publicDir: 'public',
+    base: process.env['NODE_ENV'] === 'production' ? '/nanatau-novel/' : '/',
     build: {
         outDir: 'dist',
         sourcemap: true,

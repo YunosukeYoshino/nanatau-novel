@@ -51,7 +51,7 @@
   "bugs": {
     "url": "https://github.com/YunosukeYoshino/nanatau-novel/issues"
   },
-  "homepage": "https://github.com/YunosukeYoshino/nanatau-novel#readme",
+  "homepage": "https://yunosukeyoshino.github.io/nanatau-novel/",
   "description": "ななたう - 硝子の心、たう（届く）まで - Visual Novel Game",
   "dependencies": {
     "@drincs/pixi-vn": "^1.2.21",
