@@ -15,6 +15,16 @@ import { ScenarioParser } from "./core/ScenarioParser.js";
 import { HistorySystem } from "./core/HistorySystem.js";
 import { AdvancedAssetManager } from "./core/AdvancedAssetManager.js";
 import { InputCollectionSystem } from "./core/InputCollectionSystem.js";
+import { AssetMappingStrategy } from "./core/AssetMappingStrategy.js";
+import { ScenarioIntegrationSystem } from "./core/ScenarioIntegrationSystem.js";
+import { AssetGenerationGuide } from "./core/AssetGenerationGuide.js";
+import { QuickMenuSystem } from "./core/QuickMenuSystem.js";
+import { SkipAutoSystem } from "./core/SkipAutoSystem.js";
+
+// UIシステムをインポート
+import { SplashScreenSystem } from "./ui/SplashScreenSystem.js";
+import { TitleScreenSystem } from "./ui/TitleScreenSystem.js";
+import { OpeningSequenceSystem } from "./ui/OpeningSequenceSystem.js";
 
 // 型定義
 interface GameState {
@@ -656,20 +666,71 @@ async function initializeGame(): Promise<void> {
 
     // 高度なシステムを初期化
     HistorySystem.initialize();
-    await AdvancedAssetManager.initialize();
+    await AdvancedAssetManager.initialize(); // AssetMappingStrategyも内部で初期化される
     InputCollectionSystem.initialize();
+    ScenarioIntegrationSystem.initialize();
+    AssetGenerationGuide.initialize();
+    QuickMenuSystem.initialize();
+    SkipAutoSystem.initialize();
+
+    // UIシステムを初期化
+    SplashScreenSystem.initialize();
+    TitleScreenSystem.initialize();
+    OpeningSequenceSystem.initialize();
 
     // ゲームUIを作成
     const gameUI = createGameUI();
     document.body.appendChild(gameUI);
 
-    // 最初のシナリオを読み込み
-    const prologueScenario = await loadScenarioFile("00_prologue");
-    const firstScene = prologueScenario.scenes[0];
+    // オープニングシーケンス開始時にゲーム開始イベントをリッスン
+    window.addEventListener("gameSequenceStart", async () => {
+      console.log("🎮 Game sequence start event received");
+      
+      // クイックメニューを有効化
+      QuickMenuSystem.setEnabled(true);
+      
+      // 最初のシナリオを読み込み
+      const prologueScenario = await loadScenarioFile("00_prologue");
+      const firstScene = prologueScenario.scenes[0];
 
-    if (firstScene) {
-      await handleDialogueScene(firstScene);
-    }
+      if (firstScene) {
+        await handleDialogueScene(firstScene);
+      }
+    });
+
+    // スキップ・オート関連イベントリスナー
+    window.addEventListener("skipNext", () => {
+      nextScene();
+    });
+
+    window.addEventListener("autoNext", () => {
+      nextScene();
+    });
+
+    // クイックメニューからのスキップ・オート切り替え
+    window.addEventListener("toggleSkipMode", () => {
+      SkipAutoSystem.toggleSkipMode();
+    });
+
+    window.addEventListener("toggleAutoMode", () => {
+      SkipAutoSystem.toggleAutoMode();
+    });
+
+    // タイトル復帰イベント
+    window.addEventListener("returnToTitle", async () => {
+      console.log("🏠 Returning to title screen...");
+      
+      // 全システムを停止
+      SkipAutoSystem.stopAllModes();
+      QuickMenuSystem.setEnabled(false);
+      QuickMenuSystem.forceHide();
+      
+      // タイトル画面を表示
+      await TitleScreenSystem.showTitleScreen();
+    });
+
+    // オープニングシーケンスを開始
+    await OpeningSequenceSystem.runOpeningSequence();
 
     // グローバルに公開
     window.Game = Game;

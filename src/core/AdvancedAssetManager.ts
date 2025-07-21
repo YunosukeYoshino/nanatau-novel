@@ -1,4 +1,5 @@
 import { sound, canvas, ImageSprite } from "@drincs/pixi-vn";
+import { AssetMappingStrategy } from "./AssetMappingStrategy";
 
 // 高度なアセット管理システム
 export class AdvancedAssetManager {
@@ -333,13 +334,264 @@ export class AdvancedAssetManager {
     console.log("Asset manager cleanup completed");
   }
 
+  // シナリオディレクティブから背景を設定
+  static async setBackgroundFromDirective(backgroundDirective: string): Promise<boolean> {
+    try {
+      console.log(`Setting background from directive: "${backgroundDirective}"`);
+      
+      // ディレクティブをアセットIDに変換
+      const assetId = AssetMappingStrategy.resolveBackgroundAsset(backgroundDirective);
+      if (!assetId) {
+        console.warn(`Could not resolve background directive: "${backgroundDirective}"`);
+        return AdvancedAssetManager.setPlaceholderBackground(backgroundDirective);
+      }
+
+      // 実際の背景を設定
+      return AdvancedAssetManager.setBackground(assetId);
+    } catch (error) {
+      console.error(`Failed to set background from directive "${backgroundDirective}":`, error);
+      return AdvancedAssetManager.setPlaceholderBackground(backgroundDirective);
+    }
+  }
+
+  // シナリオディレクティブからキャラクターを設定
+  static async setCharacterFromDirective(
+    characterId: string, 
+    characterName: string, 
+    expression?: string,
+    position?: { x?: number; y?: number }
+  ): Promise<boolean> {
+    try {
+      console.log(`Setting character from directive: ${characterName} (${expression || "通常"})`);
+      
+      // ディレクティブをアセットIDに変換
+      const assetId = AssetMappingStrategy.resolveCharacterAsset(characterName, expression);
+      if (!assetId) {
+        console.warn(`Could not resolve character directive: ${characterName} (${expression})`);
+        return AdvancedAssetManager.setPlaceholderCharacter(characterId, characterName, position);
+      }
+
+      // 実際のキャラクターを設定
+      return AdvancedAssetManager.setCharacter(characterId, assetId, position);
+    } catch (error) {
+      console.error(`Failed to set character from directive "${characterName}":`, error);
+      return AdvancedAssetManager.setPlaceholderCharacter(characterId, characterName, position);
+    }
+  }
+
+  // プレースホルダー背景を設定
+  private static async setPlaceholderBackground(backgroundDirective: string): Promise<boolean> {
+    try {
+      console.log(`Setting placeholder background for: "${backgroundDirective}"`);
+      
+      // プレースホルダースプライトを作成
+      const backgroundSprite = new ImageSprite({
+        anchor: { x: 0.5, y: 0.5 },
+        x: 640,
+        y: 360,
+        width: 1280,
+        height: 720,
+      });
+
+      // キャンバスに追加
+      await canvas.add("background", backgroundSprite);
+      
+      // プレースホルダー情報をオーバーレイ表示
+      AdvancedAssetManager.showAssetPlaceholderInfo("background", backgroundDirective);
+      
+      console.log(`Placeholder background set for: "${backgroundDirective}"`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to set placeholder background:`, error);
+      return false;
+    }
+  }
+
+  // プレースホルダーキャラクターを設定
+  private static async setPlaceholderCharacter(
+    characterId: string,
+    characterName: string,
+    position?: { x?: number; y?: number }
+  ): Promise<boolean> {
+    try {
+      console.log(`Setting placeholder character for: ${characterName}`);
+      
+      // プレースホルダースプライトを作成
+      const characterSprite = new ImageSprite({
+        anchor: { x: 0.5, y: 1 },
+        x: position?.x || 640,
+        y: position?.y || 650,
+        width: 300,
+        height: 400,
+      });
+
+      // キャンバスに追加
+      await canvas.add(characterId, characterSprite);
+      
+      // プレースホルダー情報をオーバーレイ表示
+      AdvancedAssetManager.showAssetPlaceholderInfo("character", `${characterName} (${characterId})`);
+      
+      console.log(`Placeholder character set for: ${characterName}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to set placeholder character:`, error);
+      return false;
+    }
+  }
+
+  // プレースホルダー情報をオーバーレイ表示
+  private static showAssetPlaceholderInfo(assetType: string, assetInfo: string): void {
+    try {
+      // デバッグモードの場合のみ表示
+      if (process.env['NODE_ENV'] === "development") {
+        const overlay = document.createElement("div");
+        overlay.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background: rgba(255, 255, 255, 0.9);
+          color: #333;
+          padding: 10px;
+          border-radius: 5px;
+          font-size: 12px;
+          z-index: 2000;
+          max-width: 300px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        `;
+        overlay.textContent = `[PLACEHOLDER] ${assetType}: ${assetInfo}`;
+        
+        document.body.appendChild(overlay);
+        
+        // 3秒後に自動削除
+        setTimeout(() => {
+          if (overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+          }
+        }, 3000);
+      }
+    } catch (error) {
+      console.warn("Failed to show asset placeholder info:", error);
+    }
+  }
+
+  // アセット存在チェックと自動フォールバック
+  static async loadAssetWithFallback(assetId: string): Promise<any> {
+    try {
+      // まず通常の読み込みを試行
+      const asset = await AdvancedAssetManager.loadAsset(assetId);
+      if (asset) {
+        return asset;
+      }
+
+      // アセットが見つからない場合、プロンプト情報を取得
+      const promptInfo = AssetMappingStrategy.getAssetPromptInfo(assetId);
+      if (promptInfo) {
+        console.warn(`Asset not found but prompt available: ${assetId}`, promptInfo);
+        
+        // プレースホルダーを返す
+        return {
+          id: assetId,
+          placeholder: true,
+          promptInfo: promptInfo,
+          placeholderImage: AssetMappingStrategy.getPlaceholderImage(promptInfo.category)
+        };
+      }
+
+      console.error(`Asset and prompt info not found: ${assetId}`);
+      return null;
+    } catch (error) {
+      console.error(`Failed to load asset with fallback ${assetId}:`, error);
+      return null;
+    }
+  }
+
+  // アセット統計とレポート生成
+  static generateAssetStatusReport(): {
+    mappedAssets: number;
+    loadedAssets: number;
+    missingAssets: string[];
+    placeholderAssets: string[];
+    assetCategories: { [key: string]: number };
+  } {
+    const report = AssetMappingStrategy.generateAssetReport();
+    const loadedAssets = AdvancedAssetManager.assetRegistry.size;
+    const missingAssets: string[] = [];
+    const placeholderAssets: string[] = [];
+    const assetCategories: { [key: string]: number } = {};
+
+    // 背景アセットの状況をチェック
+    for (const bg of report.backgrounds) {
+      const category = bg.promptInfo?.category || "unknown";
+      assetCategories[category] = (assetCategories[category] || 0) + 1;
+      
+      if (!AdvancedAssetManager.assetRegistry.has(bg.assetId)) {
+        if (bg.promptInfo) {
+          placeholderAssets.push(bg.assetId);
+        } else {
+          missingAssets.push(bg.assetId);
+        }
+      }
+    }
+
+    // キャラクターアセットの状況をチェック
+    for (const char of report.characters) {
+      const category = char.promptInfo?.category || "unknown";
+      assetCategories[category] = (assetCategories[category] || 0) + 1;
+      
+      if (!AdvancedAssetManager.assetRegistry.has(char.assetId)) {
+        if (char.promptInfo) {
+          placeholderAssets.push(char.assetId);
+        } else {
+          missingAssets.push(char.assetId);
+        }
+      }
+    }
+
+    return {
+      mappedAssets: report.backgrounds.length + report.characters.length,
+      loadedAssets,
+      missingAssets,
+      placeholderAssets,
+      assetCategories
+    };
+  }
+
+  // デバッグ用：アセット状況をコンソールに出力
+  static logAssetStatus(): void {
+    const report = AdvancedAssetManager.generateAssetStatusReport();
+    
+    console.group("🎨 Asset Manager Status Report");
+    console.log(`📊 Mapped Assets: ${report.mappedAssets}`);
+    console.log(`✅ Loaded Assets: ${report.loadedAssets}`);
+    console.log(`📱 Placeholder Assets: ${report.placeholderAssets.length}`);
+    console.log(`❌ Missing Assets: ${report.missingAssets.length}`);
+    console.log(`📂 Categories:`, report.assetCategories);
+    
+    if (report.missingAssets.length > 0) {
+      console.warn("Missing assets:", report.missingAssets);
+    }
+    
+    if (report.placeholderAssets.length > 0) {
+      console.info("Assets using placeholders:", report.placeholderAssets);
+    }
+    
+    console.groupEnd();
+  }
+
   // 初期化
   static async initialize(): Promise<void> {
     console.log("Initializing Advanced Asset Manager...");
 
     try {
+      // アセットマッピング戦略を初期化
+      AssetMappingStrategy.initialize();
+      
       // デフォルトアセットをプリロード
       await AdvancedAssetManager.preloadAssets();
+      
+      // アセット状況をレポート
+      AdvancedAssetManager.logAssetStatus();
+      
       console.log("Advanced Asset Manager initialized successfully");
     } catch (error) {
       console.error("Failed to initialize Advanced Asset Manager:", error);

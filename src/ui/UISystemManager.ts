@@ -20,7 +20,7 @@ import type {
 import { MainMenuSystem } from "./MainMenuSystem.js";
 import { SaveLoadMenuSystem } from "./SaveLoadMenuSystem.js";
 import { SettingsSystem } from "./SettingsSystem.js";
-import { TitleScreenSystem } from "./TitleScreenSystem.js";
+// import { TitleScreenSystem } from "./TitleScreenSystem.js"; // 新しい実装と互換性なし
 import { UIStateManager } from "./UIStateManager.js";
 
 export interface UISystemConfig {
@@ -48,7 +48,7 @@ export class UISystemManager implements IUISystemManager {
   private gameMenuSystem: IGameMenuSystem;
   private settingsSystem: ISettingsSystem;
   private saveLoadMenuSystem: ISaveLoadMenuSystem;
-  private titleScreenSystem: ITitleScreenSystem;
+  // private titleScreenSystem: ITitleScreenSystem; // 新しい実装と互換性なし
   private uiStateManager: IUIStateManager;
 
   // 外部システムとの連携
@@ -102,7 +102,7 @@ export class UISystemManager implements IUISystemManager {
     this.gameMenuSystem = new GameMenuSystem(config);
     this.settingsSystem = new SettingsSystem(config);
     this.saveLoadMenuSystem = new SaveLoadMenuSystem(config);
-    this.titleScreenSystem = new TitleScreenSystem(config);
+    // this.titleScreenSystem = new TitleScreenSystem(config); // 新しいTitleScreenSystemと互換性なし
     this.uiStateManager = new UIStateManager();
   }
 
@@ -162,10 +162,10 @@ export class UISystemManager implements IUISystemManager {
   }
 
   /**
-   * タイトル画面システムの取得
+   * タイトル画面システムの取得（新しいTitleScreenSystemと互換性なし）
    */
   getTitleScreenSystem(): ITitleScreenSystem {
-    return this.titleScreenSystem;
+    throw new Error("TitleScreenSystem is not available in current implementation");
   }
 
   /**
@@ -323,7 +323,7 @@ export class UISystemManager implements IUISystemManager {
       this.gameMenuSystem.initialize(),
       this.settingsSystem.initialize(),
       this.saveLoadMenuSystem.initialize(),
-      this.titleScreenSystem.initialize(),
+      // this.titleScreenSystem.initialize(), // 新しい実装と互換性なし
     ];
 
     await Promise.all(initPromises);
@@ -439,18 +439,18 @@ export class UISystemManager implements IUISystemManager {
       },
     });
 
-    // タイトル画面システムの連携
-    this.titleScreenSystem.setCallbacks({
-      onTitleClick: async () => {
-        await this.transitionToScreen("mainMenu");
-      },
-      onVideoEnd: async () => {
-        console.log("Opening video ended");
-      },
-      onVideoSkip: async () => {
-        console.log("Opening video skipped");
-      },
-    });
+    // タイトル画面システムの連携（新しい実装と互換性なし）
+    // this.titleScreenSystem.setCallbacks({
+    //   onTitleClick: async () => {
+    //     await this.transitionToScreen("mainMenu");
+    //   },
+    //   onVideoEnd: async () => {
+    //     console.log("Opening video ended");
+    //   },
+    //   onVideoSkip: async () => {
+    //     console.log("Opening video skipped");
+    //   },
+    // });
 
     console.log("System connections established");
   }
@@ -507,7 +507,8 @@ export class UISystemManager implements IUISystemManager {
   ): Promise<void> {
     switch (screen) {
       case "title":
-        await this.titleScreenSystem.showTitleScreen();
+        // await this.titleScreenSystem.showTitleScreen(); // 新しい実装と互換性なし
+        console.log("Title screen not available in current implementation");
         break;
       case "mainMenu":
         await this.mainMenuSystem.showMainMenu();
@@ -534,9 +535,10 @@ export class UISystemManager implements IUISystemManager {
 
     switch (currentState.currentScreen) {
       case "title":
-        if (this.titleScreenSystem.isTitleScreenVisible()) {
-          await this.titleScreenSystem.hideTitleScreen();
-        }
+        // if (this.titleScreenSystem.isTitleScreenVisible()) {
+        //   await this.titleScreenSystem.hideTitleScreen();
+        // }
+        console.log("Title screen hide not available in current implementation");
         break;
       case "mainMenu":
         if (this.mainMenuSystem.isMainMenuVisible()) {
@@ -635,7 +637,7 @@ export class UISystemManager implements IUISystemManager {
     this.gameMenuSystem.reset();
     this.settingsSystem.reset();
     this.saveLoadMenuSystem.reset();
-    this.titleScreenSystem.reset();
+    // this.titleScreenSystem.reset(); // 新しい実装と互換性なし
 
     // 初期状態にリセット
     const initialState: UIState = {
@@ -656,7 +658,7 @@ export class UISystemManager implements IUISystemManager {
     this.gameMenuSystem.dispose();
     this.settingsSystem.dispose();
     this.saveLoadMenuSystem.dispose();
-    this.titleScreenSystem.dispose();
+    // this.titleScreenSystem.dispose(); // 新しい実装と互換性なし
 
     // this.isInitialized = false; // プロパティを削除したためコメントアウト
 

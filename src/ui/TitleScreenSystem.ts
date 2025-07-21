@@ -1,709 +1,573 @@
-/**
- * タイトル画面システム - ゲーム開始時の初期画面
- * Phase 5: UI/UX実装システム
- */
+import { sound } from "@drincs/pixi-vn";
+import { AdvancedAssetManager } from "../core/AdvancedAssetManager";
 
-import type { GameConfig } from "../types/core.js";
-import type { ITitleScreenSystem } from "./interfaces.js";
+// タイトル画面システム
+export class TitleScreenSystem {
+  private static currentTitleElement: HTMLElement | null = null;
+  private static isShowing = false;
+  private static titleMusic = "bgm_main";
 
-export interface TitleScreenConfig {
-  /** 背景設定 */
-  background: {
-    imagePath?: string;
-    color?: string;
-    videoPath?: string;
-  };
-  /** タイトルロゴ設定 */
-  titleLogo: {
-    imagePath?: string;
-    text: string;
-    position: { x: number; y: number };
-    fontSize: number;
-    fontFamily: string;
-    color: string;
-  };
-  /** アニメーション設定 */
-  animation: {
-    logoFadeInDuration: number;
-    logoFadeInDelay: number;
-    pressKeyFadeInDuration: number;
-    pressKeyFadeInDelay: number;
-    pressKeyBlinkInterval: number;
-  };
-  /** オープニング動画設定 */
-  openingVideo: {
-    path?: string;
-    skipable: boolean;
-    autoPlay: boolean;
-  };
-}
+  // タイトル画面メニューオプション
+  private static menuOptions = [
+    { id: "new_game", text: "新しいゲーム", action: "startNewGame", hotkey: "N" },
+    { id: "load_game", text: "ゲームを読み込む", action: "loadGame", hotkey: "L" },
+    { id: "settings", text: "設定", action: "openSettings", hotkey: "S" },
+    { id: "gallery", text: "ギャラリー", action: "openGallery", hotkey: "G" },
+    { id: "credits", text: "クレジット", action: "showCredits", hotkey: "C" }
+  ];
 
-export class TitleScreenSystem implements ITitleScreenSystem {
-  private titleConfig: TitleScreenConfig;
-  private isVisible: boolean = false;
-  private isInitialized: boolean = false;
-  private isVideoPlaying: boolean = false;
-
-  // UI要素
-  private containerElement: HTMLElement | null = null;
-  private backgroundElement: HTMLElement | null = null;
-  private titleLogoElement: HTMLElement | null = null;
-  private pressKeyElement: HTMLElement | null = null;
-  private videoElement: HTMLVideoElement | null = null;
-
-  // アニメーション管理
-  private blinkInterval: number | null = null;
-  private fadeTimeout: number | null = null;
-
-  // 外部システムとの連携
-  private onTitleClickCallback: (() => Promise<void>) | undefined = undefined;
-  private onVideoEndCallback: (() => Promise<void>) | undefined = undefined;
-  private onVideoSkipCallback: (() => Promise<void>) | undefined = undefined;
-
-  constructor(
-    _gameConfig: GameConfig,
-    titleConfig?: Partial<TitleScreenConfig>
-  ) {
-    this.titleConfig = {
-      background: {
-        color: "#0f0f23",
-      },
-      titleLogo: {
-        text: "ななたう",
-        position: { x: 50, y: 30 }, // パーセンテージ
-        fontSize: 64,
-        fontFamily: "Noto Sans JP, Arial, sans-serif",
-        color: "#ffffff",
-      },
-      animation: {
-        logoFadeInDuration: 2000,
-        logoFadeInDelay: 1000,
-        pressKeyFadeInDuration: 1000,
-        pressKeyFadeInDelay: 3000,
-        pressKeyBlinkInterval: 2000,
-      },
-      openingVideo: {
-        skipable: true,
-        autoPlay: false,
-      },
-      ...titleConfig,
-    };
-  }
-
-  /**
-   * システムの初期化
-   */
-  async initialize(): Promise<void> {
-    try {
-      // コンテナ要素の作成
-      this.createContainerElement();
-
-      // UI要素の初期化
-      await this.initializeUIElements();
-
-      // イベントリスナーの設定
-      this.setupEventListeners();
-
-      this.isInitialized = true;
-      console.log("TitleScreenSystem initialized");
-    } catch (error) {
-      console.error("Failed to initialize TitleScreenSystem:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * タイトル画面の表示
-   */
-  async showTitleScreen(): Promise<void> {
-    if (!this.isInitialized) {
-      throw new Error("TitleScreenSystem not initialized");
-    }
-
-    if (this.isVisible) {
-      console.warn("Title screen is already visible");
-      return;
-    }
-
-    try {
-      // コンテナを表示
-      if (this.containerElement) {
-        this.containerElement.style.display = "block";
-      }
-
-      // オープニング動画の自動再生チェック
-      if (
-        this.titleConfig.openingVideo.autoPlay &&
-        this.titleConfig.openingVideo.path
-      ) {
-        await this.playOpeningVideo();
-      } else {
-        // タイトル画面のアニメーション開始
-        await this.startTitleAnimation();
-      }
-
-      this.isVisible = true;
-      console.log("Title screen shown");
-    } catch (error) {
-      console.error("Failed to show title screen:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * タイトル画面の非表示
-   */
-  async hideTitleScreen(): Promise<void> {
-    if (!this.isVisible) {
-      console.warn("Title screen is not visible");
-      return;
-    }
-
-    try {
-      // アニメーションの停止
-      this.stopAnimations();
-
-      // フェードアウト
-      await this.fadeOut();
-
-      // コンテナを非表示
-      if (this.containerElement) {
-        this.containerElement.style.display = "none";
-      }
-
-      this.isVisible = false;
-      console.log("Title screen hidden");
-    } catch (error) {
-      console.error("Failed to hide title screen:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * オープニング動画の再生
-   */
-  async playOpeningVideo(): Promise<void> {
-    if (!this.titleConfig.openingVideo.path) {
-      console.warn("No opening video path specified");
-      return;
-    }
-
-    try {
-      console.log("Playing opening video");
-
-      // 動画要素の作成と設定
-      await this.setupVideoElement();
-
-      if (this.videoElement) {
-        this.isVideoPlaying = true;
-
-        // 動画を表示して再生
-        this.videoElement.style.display = "block";
-        await this.videoElement.play();
-      }
-    } catch (error) {
-      console.error("Failed to play opening video:", error);
-      // 動画再生に失敗した場合、タイトル画面にフォールバック
-      await this.onVideoEnd();
-    }
-  }
-
-  /**
-   * タイトル画面の状態確認
-   */
-  isTitleScreenVisible(): boolean {
-    return this.isVisible;
-  }
-
-  /**
-   * 動画再生中かどうかの確認
-   */
-  isVideoCurrentlyPlaying(): boolean {
-    return this.isVideoPlaying;
-  }
-
-  /**
-   * コールバック関数の設定
-   */
-  setCallbacks(callbacks: {
-    onTitleClick?: () => Promise<void>;
-    onVideoEnd?: () => Promise<void>;
-    onVideoSkip?: () => Promise<void>;
-  }): void {
-    this.onTitleClickCallback = callbacks.onTitleClick;
-    this.onVideoEndCallback = callbacks.onVideoEnd;
-    this.onVideoSkipCallback = callbacks.onVideoSkip;
-  }
-
-  /**
-   * コンテナ要素の作成
-   */
-  private createContainerElement(): void {
-    if (typeof document === "undefined") {
-      console.warn("DOM not available");
-      return;
-    }
-
-    this.containerElement = document.createElement("div");
-    this.containerElement.id = "title-screen-container";
-    this.containerElement.style.cssText = `
+  // タイトル画面を作成
+  static createTitleScreen(): HTMLElement {
+    const titleContainer = document.createElement("div");
+    titleContainer.id = "title-screen-container";
+    titleContainer.style.cssText = `
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      display: none;
-      z-index: 1000;
-      font-family: ${this.titleConfig.titleLogo.fontFamily};
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 70%, #1a1a2e 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 3000;
       overflow: hidden;
     `;
 
-    document.body.appendChild(this.containerElement);
-  }
+    // 背景パーティクル効果
+    const backgroundEffects = TitleScreenSystem.createBackgroundEffects();
+    titleContainer.appendChild(backgroundEffects);
 
-  /**
-   * UI要素の初期化
-   */
-  private async initializeUIElements(): Promise<void> {
-    if (!this.containerElement) {
-      throw new Error("Container element not created");
-    }
-
-    // 背景要素の作成
-    this.createBackgroundElement();
-
-    // タイトルロゴの作成
-    this.createTitleLogo();
-
-    // "Press any key"テキストの作成
-    this.createPressKeyText();
-  }
-
-  /**
-   * 背景要素の作成
-   */
-  private createBackgroundElement(): void {
-    if (!this.containerElement) return;
-
-    this.backgroundElement = document.createElement("div");
-    this.backgroundElement.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-    `;
-
-    // 背景設定の適用
-    if (this.titleConfig.background.imagePath) {
-      this.backgroundElement.style.backgroundImage = `url(${this.titleConfig.background.imagePath})`;
-      this.backgroundElement.style.backgroundSize = "cover";
-      this.backgroundElement.style.backgroundPosition = "center";
-      this.backgroundElement.style.backgroundRepeat = "no-repeat";
-    } else if (this.titleConfig.background.color) {
-      this.backgroundElement.style.background =
-        this.titleConfig.background.color;
-    }
-
-    // グラデーションオーバーレイ
-    const overlay = document.createElement("div");
-    overlay.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(45deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1));
-    `;
-
-    this.backgroundElement.appendChild(overlay);
-    this.containerElement.appendChild(this.backgroundElement);
-  }
-
-  /**
-   * タイトルロゴの作成
-   */
-  private createTitleLogo(): void {
-    if (!this.containerElement) return;
-
-    this.titleLogoElement = document.createElement("div");
-    this.titleLogoElement.style.cssText = `
-      position: absolute;
-      left: ${this.titleConfig.titleLogo.position.x}%;
-      top: ${this.titleConfig.titleLogo.position.y}%;
-      transform: translate(-50%, -50%);
-      z-index: 3;
-      opacity: 0;
-      transition: opacity ${this.titleConfig.animation.logoFadeInDuration}ms ease;
-    `;
-
-    if (this.titleConfig.titleLogo.imagePath) {
-      // 画像ロゴの場合
-      const logoImage = document.createElement("img");
-      logoImage.src = this.titleConfig.titleLogo.imagePath;
-      logoImage.style.cssText = `
-        max-width: 100%;
-        height: auto;
-        user-select: none;
-        filter: drop-shadow(2px 2px 8px rgba(0, 0, 0, 0.5));
-      `;
-      this.titleLogoElement.appendChild(logoImage);
-    } else {
-      // テキストロゴの場合
-      this.titleLogoElement.style.cssText += `
-        font-size: ${this.titleConfig.titleLogo.fontSize}px;
-        font-family: ${this.titleConfig.titleLogo.fontFamily};
-        color: ${this.titleConfig.titleLogo.color};
-        font-weight: bold;
-        text-align: center;
-        text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.7);
-        user-select: none;
-        letter-spacing: 4px;
-      `;
-      this.titleLogoElement.textContent = this.titleConfig.titleLogo.text;
-    }
-
-    this.containerElement.appendChild(this.titleLogoElement);
-  }
-
-  /**
-   * "Press any key"テキストの作成
-   */
-  private createPressKeyText(): void {
-    if (!this.containerElement) return;
-
-    this.pressKeyElement = document.createElement("div");
-    this.pressKeyElement.style.cssText = `
-      position: absolute;
-      left: 50%;
-      bottom: 15%;
-      transform: translateX(-50%);
-      z-index: 3;
-      opacity: 0;
-      transition: opacity ${this.titleConfig.animation.pressKeyFadeInDuration}ms ease;
-      font-size: 18px;
-      color: ${this.titleConfig.titleLogo.color};
+    // ゲームタイトル
+    const gameTitle = document.createElement("div");
+    gameTitle.style.cssText = `
       text-align: center;
-      user-select: none;
-      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+      margin-bottom: 60px;
+      z-index: 3001;
+      position: relative;
     `;
-    this.pressKeyElement.textContent = "クリックまたはキーを押してください";
 
-    this.containerElement.appendChild(this.pressKeyElement);
+    const mainTitle = document.createElement("h1");
+    mainTitle.style.cssText = `
+      font-family: 'Yu Gothic', 'Meiryo', serif;
+      font-size: 64px;
+      font-weight: bold;
+      color: #FFE4E1;
+      margin: 0 0 20px 0;
+      text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.8);
+      letter-spacing: 4px;
+      opacity: 0;
+      transform: translateY(-30px);
+      animation: titleFadeIn 2s ease-out 0.5s forwards;
+    `;
+    mainTitle.textContent = "ななたう";
+
+    const subTitle = document.createElement("h2");
+    subTitle.style.cssText = `
+      font-family: 'Yu Gothic', 'Meiryo', sans-serif;
+      font-size: 28px;
+      font-weight: normal;
+      color: #cccccc;
+      margin: 0;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
+      letter-spacing: 2px;
+      opacity: 0;
+      transform: translateY(30px);
+      animation: titleFadeIn 2s ease-out 1s forwards;
+    `;
+    subTitle.textContent = "硝子の心、たう（届く）まで";
+
+    gameTitle.appendChild(mainTitle);
+    gameTitle.appendChild(subTitle);
+
+    // メインメニュー
+    const mainMenu = TitleScreenSystem.createMainMenu();
+    
+    // バージョン情報
+    const versionInfo = document.createElement("div");
+    versionInfo.style.cssText = `
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      font-family: 'Yu Gothic', 'Meiryo', monospace;
+    `;
+    versionInfo.textContent = "Ver 1.0.0 | Phase 9";
+
+    // コピーライト
+    const copyright = document.createElement("div");
+    copyright.style.cssText = `
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      font-family: 'Yu Gothic', 'Meiryo', sans-serif;
+    `;
+    copyright.textContent = "© 2024 ななたう Project";
+
+    // CSS アニメーション定義
+    TitleScreenSystem.addTitleScreenCSS();
+
+    titleContainer.appendChild(gameTitle);
+    titleContainer.appendChild(mainMenu);
+    titleContainer.appendChild(versionInfo);
+    titleContainer.appendChild(copyright);
+
+    return titleContainer;
   }
 
-  /**
-   * 動画要素のセットアップ
-   */
-  private async setupVideoElement(): Promise<void> {
-    if (!this.containerElement || !this.titleConfig.openingVideo.path) return;
-
-    // 既存の動画要素を削除
-    if (this.videoElement) {
-      this.videoElement.remove();
-    }
-
-    this.videoElement = document.createElement("video");
-    this.videoElement.style.cssText = `
+  // 背景エフェクト作成
+  private static createBackgroundEffects(): HTMLElement {
+    const effectsContainer = document.createElement("div");
+    effectsContainer.style.cssText = `
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      z-index: 2;
-      display: none;
+      pointer-events: none;
+      overflow: hidden;
     `;
 
-    this.videoElement.src = this.titleConfig.openingVideo.path;
-    this.videoElement.muted = false; // 音声ありで再生
-    this.videoElement.preload = "auto";
-
-    // 動画イベントリスナー
-    this.videoElement.addEventListener("ended", () => {
-      this.onVideoEnd();
-    });
-
-    this.videoElement.addEventListener("error", (error) => {
-      console.error("Video playback error:", error);
-      this.onVideoEnd(); // エラー時もタイトル画面に移行
-    });
-
-    // スキップ可能な場合の処理
-    if (this.titleConfig.openingVideo.skipable) {
-      const skipButton = document.createElement("button");
-      skipButton.style.cssText = `
+    // ステンドグラス風フローティングパーティクル
+    for (let i = 0; i < 25; i++) {
+      const particle = document.createElement("div");
+      const size = Math.random() * 10 + 5;
+      const color = TitleScreenSystem.getRandomGlassColor();
+      
+      particle.style.cssText = `
         position: absolute;
-        top: 20px;
-        right: 20px;
-        background: rgba(0, 0, 0, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 6px;
-        color: #ffffff;
-        font-size: 14px;
-        padding: 8px 16px;
-        cursor: pointer;
-        z-index: 4;
-        transition: background 0.2s ease;
+        width: ${size}px;
+        height: ${size}px;
+        background: ${color};
+        border-radius: 50%;
+        opacity: ${Math.random() * 0.6 + 0.2};
+        left: ${Math.random() * 100}%;
+        top: ${Math.random() * 100}%;
+        animation: floatParticle ${Math.random() * 20 + 10}s linear infinite;
+        box-shadow: 0 0 ${size * 2}px ${color};
+        filter: blur(${Math.random() * 1}px);
       `;
-      skipButton.textContent = "スキップ";
-      skipButton.addEventListener("click", () => {
-        this.skipVideo();
-      });
-
-      skipButton.addEventListener("mouseenter", () => {
-        skipButton.style.background = "rgba(0, 0, 0, 0.9)";
-      });
-
-      skipButton.addEventListener("mouseleave", () => {
-        skipButton.style.background = "rgba(0, 0, 0, 0.7)";
-      });
-
-      this.containerElement.appendChild(skipButton);
+      
+      effectsContainer.appendChild(particle);
     }
 
-    this.containerElement.appendChild(this.videoElement);
+    // ライトレイエフェクト
+    for (let i = 0; i < 5; i++) {
+      const ray = document.createElement("div");
+      ray.style.cssText = `
+        position: absolute;
+        width: 2px;
+        height: 100%;
+        background: linear-gradient(180deg, transparent 0%, rgba(255, 228, 225, 0.3) 50%, transparent 100%);
+        left: ${Math.random() * 100}%;
+        top: 0;
+        transform: rotate(${Math.random() * 20 - 10}deg);
+        animation: shimmer ${Math.random() * 8 + 6}s ease-in-out infinite;
+      `;
+      
+      effectsContainer.appendChild(ray);
+    }
+
+    return effectsContainer;
   }
 
-  /**
-   * 動画終了時の処理
-   */
-  private async onVideoEnd(): Promise<void> {
-    this.isVideoPlaying = false;
+  // メインメニュー作成
+  private static createMainMenu(): HTMLElement {
+    const menuContainer = document.createElement("div");
+    menuContainer.id = "title-main-menu";
+    menuContainer.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      z-index: 3001;
+      position: relative;
+      opacity: 0;
+      transform: translateY(50px);
+      animation: menuFadeIn 1.5s ease-out 2s forwards;
+    `;
 
-    if (this.videoElement) {
-      this.videoElement.style.display = "none";
-    }
+    TitleScreenSystem.menuOptions.forEach((option, index) => {
+      const menuButton = document.createElement("button");
+      menuButton.id = `menu-${option.id}`;
+      menuButton.style.cssText = `
+        background: rgba(26, 26, 46, 0.8);
+        border: 2px solid rgba(255, 228, 225, 0.3);
+        color: #FFE4E1;
+        padding: 15px 40px;
+        font-size: 20px;
+        font-family: 'Yu Gothic', 'Meiryo', sans-serif;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 280px;
+        text-align: center;
+        backdrop-filter: blur(5px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        animation: buttonSlideIn 0.6s ease-out ${2.5 + (index * 0.2)}s forwards;
+        opacity: 0;
+        transform: translateX(-100px);
+      `;
+      
+      menuButton.textContent = option.text;
 
-    // タイトル画面のアニメーション開始
-    await this.startTitleAnimation();
-
-    if (this.onVideoEndCallback) {
-      await this.onVideoEndCallback();
-    }
-  }
-
-  /**
-   * 動画スキップ処理
-   */
-  private async skipVideo(): Promise<void> {
-    if (!this.isVideoPlaying) return;
-
-    console.log("Skipping opening video");
-
-    if (this.videoElement) {
-      this.videoElement.pause();
-      this.videoElement.currentTime = 0;
-    }
-
-    await this.onVideoEnd();
-
-    if (this.onVideoSkipCallback) {
-      await this.onVideoSkipCallback();
-    }
-  }
-
-  /**
-   * タイトル画面アニメーションの開始
-   */
-  private async startTitleAnimation(): Promise<void> {
-    // ロゴのフェードイン
-    if (this.titleLogoElement) {
-      setTimeout(() => {
-        if (this.titleLogoElement) {
-          this.titleLogoElement.style.opacity = "1";
-        }
-      }, this.titleConfig.animation.logoFadeInDelay);
-    }
-
-    // "Press any key"のフェードイン
-    if (this.pressKeyElement) {
-      setTimeout(() => {
-        if (this.pressKeyElement) {
-          this.pressKeyElement.style.opacity = "1";
-
-          // 点滅アニメーション開始
-          this.startBlinkAnimation();
-        }
-      }, this.titleConfig.animation.pressKeyFadeInDelay);
-    }
-  }
-
-  /**
-   * 点滅アニメーションの開始
-   */
-  private startBlinkAnimation(): void {
-    if (!this.pressKeyElement) return;
-
-    this.blinkInterval = window.setInterval(() => {
-      if (this.pressKeyElement) {
-        this.pressKeyElement.style.opacity =
-          this.pressKeyElement.style.opacity === "0.3" ? "1" : "0.3";
+      // ホットキー表示
+      if (option.hotkey) {
+        const hotkey = document.createElement("span");
+        hotkey.style.cssText = `
+          margin-left: 10px;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 16px;
+        `;
+        hotkey.textContent = `[${option.hotkey}]`;
+        menuButton.appendChild(hotkey);
       }
-    }, this.titleConfig.animation.pressKeyBlinkInterval);
+
+      // ホバー効果
+      menuButton.addEventListener("mouseenter", () => {
+        menuButton.style.background = "rgba(255, 228, 225, 0.1)";
+        menuButton.style.borderColor = "rgba(255, 228, 225, 0.6)";
+        menuButton.style.transform = "translateX(10px) scale(1.05)";
+        menuButton.style.boxShadow = "0 6px 20px rgba(255, 228, 225, 0.2)";
+        
+        // ホバー音効果（あれば）
+        TitleScreenSystem.playHoverSound();
+      });
+
+      menuButton.addEventListener("mouseleave", () => {
+        menuButton.style.background = "rgba(26, 26, 46, 0.8)";
+        menuButton.style.borderColor = "rgba(255, 228, 225, 0.3)";
+        menuButton.style.transform = "translateX(0) scale(1)";
+        menuButton.style.boxShadow = "0 4px 15px rgba(0, 0, 0, 0.3)";
+      });
+
+      // クリックイベント
+      menuButton.addEventListener("click", () => {
+        TitleScreenSystem.handleMenuSelection(option.action);
+      });
+
+      menuContainer.appendChild(menuButton);
+    });
+
+    return menuContainer;
   }
 
-  /**
-   * タイトルクリック処理
-   */
-  private async handleTitleClick(): Promise<void> {
-    if (this.isVideoPlaying) {
-      // 動画再生中の場合はスキップ
-      await this.skipVideo();
+  // CSS アニメーション定義
+  private static addTitleScreenCSS(): void {
+    if (document.getElementById("title-screen-animations")) {
       return;
     }
 
+    const style = document.createElement("style");
+    style.id = "title-screen-animations";
+    style.textContent = `
+      @keyframes titleFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      @keyframes menuFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(50px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      @keyframes buttonSlideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-100px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      
+      @keyframes floatParticle {
+        0% {
+          transform: translateY(100vh) rotate(0deg);
+        }
+        100% {
+          transform: translateY(-10vh) rotate(360deg);
+        }
+      }
+      
+      @keyframes shimmer {
+        0%, 100% {
+          opacity: 0.3;
+          transform: scaleY(1) rotate(0deg);
+        }
+        50% {
+          opacity: 0.8;
+          transform: scaleY(1.2) rotate(5deg);
+        }
+      }
+    `;
+    
+    document.head.appendChild(style);
+  }
+
+  // ランダムガラス色取得
+  private static getRandomGlassColor(): string {
+    const colors = [
+      "#FFE4E1", "#E6E6FA", "#F0F8FF", "#FFF8DC",
+      "#F5F5DC", "#E0FFFF", "#FFFACD", "#FFE4B5",
+      "#FFEFD5", "#F0FFFF", "#F5FFFA", "#FFFFF0"
+    ];
+    return colors[Math.floor(Math.random() * colors.length)] || "#FFE4E1";
+  }
+
+  // メニュー選択処理
+  private static handleMenuSelection(action: string): void {
+    console.log(`Menu action selected: ${action}`);
+    
+    // 選択音効果
+    TitleScreenSystem.playSelectSound();
+
+    switch (action) {
+      case "startNewGame":
+        TitleScreenSystem.startNewGame();
+        break;
+      case "loadGame":
+        TitleScreenSystem.openLoadMenu();
+        break;
+      case "settings":
+        TitleScreenSystem.openSettings();
+        break;
+      case "gallery":
+        TitleScreenSystem.openGallery();
+        break;
+      case "showCredits":
+        TitleScreenSystem.showCredits();
+        break;
+      default:
+        console.warn(`Unknown menu action: ${action}`);
+    }
+  }
+
+  // 新しいゲーム開始
+  private static async startNewGame(): Promise<void> {
+    console.log("🎮 Starting new game...");
+    
     try {
-      console.log("Title screen clicked");
-
-      if (this.onTitleClickCallback) {
-        await this.onTitleClickCallback();
-      }
+      // タイトル画面を非表示
+      await TitleScreenSystem.hideTitleScreen();
+      
+      // ゲーム開始イベントを発火
+      const startGameEvent = new CustomEvent("startNewGame");
+      window.dispatchEvent(startGameEvent);
+      
     } catch (error) {
-      console.error("Failed to handle title click:", error);
+      console.error("Failed to start new game:", error);
     }
   }
 
-  /**
-   * イベントリスナーの設定
-   */
-  private setupEventListeners(): void {
-    if (typeof window === "undefined") return;
-
-    // キーボード・マウスイベント
-    const handleInteraction = (event: KeyboardEvent | MouseEvent) => {
-      if (!this.isVisible) return;
-
-      // 特定のキー以外は無視
-      if (event instanceof KeyboardEvent) {
-        const ignoreKeys = [
-          "F1",
-          "F2",
-          "F3",
-          "F4",
-          "F5",
-          "F6",
-          "F7",
-          "F8",
-          "F9",
-          "F10",
-          "F11",
-          "F12",
-        ];
-        if (ignoreKeys.includes(event.key)) return;
-      }
-
-      event.preventDefault();
-      this.handleTitleClick();
-    };
-
-    // クリックイベント（コンテナ全体）
-    if (this.containerElement) {
-      this.containerElement.addEventListener("click", handleInteraction);
-    }
-
-    // キーボードイベント
-    window.addEventListener("keydown", handleInteraction);
+  // ロードメニューを開く
+  private static openLoadMenu(): void {
+    console.log("📂 Opening load menu...");
+    // TODO: ロードメニュー実装
+    alert("ロード機能は今後実装予定です");
   }
 
-  /**
-   * フェードアウト処理
-   */
-  private async fadeOut(): Promise<void> {
+  // 設定画面を開く
+  private static openSettings(): void {
+    console.log("⚙️ Opening settings...");
+    // TODO: 設定画面実装
+    alert("設定画面は今後実装予定です");
+  }
+
+  // ギャラリーを開く
+  private static openGallery(): void {
+    console.log("🖼️ Opening gallery...");
+    // TODO: ギャラリー実装
+    alert("ギャラリーは今後実装予定です");
+  }
+
+  // クレジット表示
+  private static showCredits(): void {
+    console.log("📋 Showing credits...");
+    // TODO: クレジット画面実装
+    alert("クレジット画面は今後実装予定です");
+  }
+
+  // 音効果
+  private static playHoverSound(): void {
+    try {
+      // ホバー音効果（軽微なもの）
+      sound.play("se_hover", { volume: 0.3 });
+    } catch (error) {
+      // 音声ファイルがない場合は無視
+    }
+  }
+
+  private static playSelectSound(): void {
+    try {
+      // 選択音効果
+      sound.play("se_select", { volume: 0.5 });
+    } catch (error) {
+      // 音声ファイルがない場合は無視
+    }
+  }
+
+  // タイトル画面を表示
+  static async showTitleScreen(): Promise<void> {
+    if (TitleScreenSystem.isShowing) {
+      return;
+    }
+
+    console.log("🎵 Showing title screen...");
+    TitleScreenSystem.isShowing = true;
+
+    try {
+      // BGM開始
+      await TitleScreenSystem.startTitleMusic();
+      
+      // タイトル画面作成
+      const titleScreen = TitleScreenSystem.createTitleScreen();
+      TitleScreenSystem.currentTitleElement = titleScreen;
+      document.body.appendChild(titleScreen);
+
+      // キーボードイベント設定
+      TitleScreenSystem.setupKeyboardHandlers();
+
+    } catch (error) {
+      console.error("Failed to show title screen:", error);
+    }
+  }
+
+  // タイトル画面を非表示
+  static async hideTitleScreen(): Promise<void> {
+    if (!TitleScreenSystem.currentTitleElement || !TitleScreenSystem.isShowing) {
+      return;
+    }
+
+    console.log("🎵 Hiding title screen...");
+
+    const titleElement = TitleScreenSystem.currentTitleElement;
+    
+    // フェードアウト
+    titleElement.style.opacity = "0";
+    titleElement.style.transition = "opacity 1s ease-in-out";
+
     return new Promise((resolve) => {
-      if (!this.containerElement) {
-        resolve();
-        return;
-      }
-
-      this.containerElement.style.transition = "opacity 500ms ease";
-      this.containerElement.style.opacity = "0";
-
       setTimeout(() => {
+        if (titleElement.parentNode) {
+          titleElement.parentNode.removeChild(titleElement);
+        }
+        
+        TitleScreenSystem.currentTitleElement = null;
+        TitleScreenSystem.isShowing = false;
+        
+        // BGM停止
+        TitleScreenSystem.stopTitleMusic();
+        
+        // キーボードハンドラー削除
+        TitleScreenSystem.removeKeyboardHandlers();
+        
+        console.log("✅ Title screen hidden");
         resolve();
-      }, 500);
+      }, 1000);
     });
   }
 
-  /**
-   * アニメーションの停止
-   */
-  private stopAnimations(): void {
-    if (this.blinkInterval) {
-      clearInterval(this.blinkInterval);
-      this.blinkInterval = null;
-    }
-
-    if (this.fadeTimeout) {
-      clearTimeout(this.fadeTimeout);
-      this.fadeTimeout = null;
+  // タイトル音楽開始
+  private static async startTitleMusic(): Promise<void> {
+    try {
+      await AdvancedAssetManager.playBGM(TitleScreenSystem.titleMusic, {
+        volume: 0.4,
+        loop: true
+      });
+      console.log("🎵 Title music started");
+    } catch (error) {
+      console.warn("Title music not available:", error);
     }
   }
 
-  /**
-   * システムのリセット
-   */
-  reset(): void {
-    this.isVisible = false;
-    this.isVideoPlaying = false;
-
-    // アニメーションの停止
-    this.stopAnimations();
-
-    // 動画の停止
-    if (this.videoElement) {
-      this.videoElement.pause();
-      this.videoElement.currentTime = 0;
-      this.videoElement.style.display = "none";
+  // タイトル音楽停止
+  private static stopTitleMusic(): void {
+    try {
+      sound.stop(TitleScreenSystem.titleMusic);
+      console.log("🎵 Title music stopped");
+    } catch (error) {
+      console.warn("Failed to stop title music:", error);
     }
-
-    if (this.containerElement) {
-      this.containerElement.style.display = "none";
-      this.containerElement.style.opacity = "1";
-    }
-
-    // UI要素の初期化
-    if (this.titleLogoElement) {
-      this.titleLogoElement.style.opacity = "0";
-    }
-
-    if (this.pressKeyElement) {
-      this.pressKeyElement.style.opacity = "0";
-    }
-
-    console.log("TitleScreenSystem reset");
   }
 
-  /**
-   * システムの終了処理
-   */
-  dispose(): void {
-    // アニメーションとタイマーの停止
-    this.stopAnimations();
+  // キーボードハンドラー設定
+  private static setupKeyboardHandlers(): void {
+    document.addEventListener("keydown", TitleScreenSystem.handleKeyDown);
+  }
 
-    // 動画要素の削除
-    if (this.videoElement) {
-      this.videoElement.pause();
-      this.videoElement.remove();
-      this.videoElement = null;
+  // キーボードハンドラー削除
+  private static removeKeyboardHandlers(): void {
+    document.removeEventListener("keydown", TitleScreenSystem.handleKeyDown);
+  }
+
+  // キーボード入力処理
+  private static handleKeyDown(event: KeyboardEvent): void {
+    if (!TitleScreenSystem.isShowing) return;
+
+    const key = event.key.toLowerCase();
+    
+    // ホットキーでメニュー選択
+    const option = TitleScreenSystem.menuOptions.find(opt => 
+      opt.hotkey.toLowerCase() === key
+    );
+    
+    if (option) {
+      event.preventDefault();
+      TitleScreenSystem.handleMenuSelection(option.action);
+      return;
     }
 
-    // DOM要素の削除
-    if (this.containerElement?.parentNode) {
-      this.containerElement.parentNode.removeChild(this.containerElement);
+    // エンターキーで新しいゲーム開始
+    if (key === "enter") {
+      event.preventDefault();
+      TitleScreenSystem.startNewGame();
     }
+  }
 
-    // 参照の削除
-    this.containerElement = null;
-    this.backgroundElement = null;
-    this.titleLogoElement = null;
-    this.pressKeyElement = null;
+  // 現在の表示状態をチェック
+  static isCurrentlyShowing(): boolean {
+    return TitleScreenSystem.isShowing;
+  }
 
-    this.isInitialized = false;
-    this.isVisible = false;
-    this.isVideoPlaying = false;
+  // 強制非表示（緊急用）
+  static forceHide(): void {
+    if (TitleScreenSystem.currentTitleElement) {
+      const element = TitleScreenSystem.currentTitleElement;
+      if (element.parentNode) {
+        element.parentNode.removeChild(element);
+      }
+      TitleScreenSystem.currentTitleElement = null;
+    }
+    TitleScreenSystem.isShowing = false;
+    TitleScreenSystem.stopTitleMusic();
+    TitleScreenSystem.removeKeyboardHandlers();
+  }
 
-    console.log("TitleScreenSystem disposed");
+  // 初期化
+  static initialize(): void {
+    console.log("Initializing Title Screen System...");
+    
+    // 既存のタイトル画面をクリーンアップ
+    TitleScreenSystem.forceHide();
+    
+    console.log("Title Screen System initialized successfully");
   }
 }
